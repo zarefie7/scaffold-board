@@ -1,0 +1,1950 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>לוח האתר — ניהול פעילות פיגומים</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+/* ===== Design tokens ===== */
+:root{
+  --steel-900:#15171c;
+  --steel-800:#1d2026;
+  --steel-700:#262a32;
+  --steel-600:#3a3f4a;
+  --steel-400:#6b7280;
+  --steel-200:#c7ccd4;
+  --steel-100:#eceef1;
+  --paper:#f5f3ee;
+  --safety-orange:#e8590c;
+  --safety-orange-dark:#c2470a;
+  --safety-yellow:#f4c20d;
+  --ok-green:#2f9e44;
+  --danger-red:#e03131;
+  --shadow-1: 0 1px 2px rgba(0,0,0,.25);
+  --shadow-2: 0 4px 14px rgba(0,0,0,.25);
+  --radius-s:6px;
+  --radius-m:10px;
+  --radius-l:16px;
+  --font-display: 'Archivo Black','Arial Black',sans-serif;
+  --font-body: 'Inter','Segoe UI','Arial',sans-serif;
+  --font-mono: 'JetBrains Mono','Consolas',monospace;
+}
+
+@font-face{
+  font-family:'Inter';
+  src: local('Inter');
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--steel-900);
+  background-image:
+    radial-gradient(circle at 15% 0%, rgba(232,89,12,.08), transparent 40%),
+    repeating-linear-gradient(135deg, rgba(255,255,255,.015) 0px, rgba(255,255,255,.015) 1px, transparent 1px, transparent 14px);
+  color:var(--steel-100);
+  font-family:var(--font-body);
+  min-height:100vh;
+  direction:rtl;
+  -webkit-tap-highlight-color: transparent;
+}
+h1,h2,h3{font-family:var(--font-display);letter-spacing:.3px;margin:0;}
+button{font-family:inherit;}
+::selection{background:var(--safety-orange);color:#fff;}
+
+/* hairline texture band used as section dividers, echoing scaffold tubing */
+.tube-rule{
+  height:8px;
+  background:repeating-linear-gradient(-45deg, var(--safety-yellow) 0 10px, var(--steel-900) 10px 20px);
+  border-radius:99px;
+  margin:0 0 18px 0;
+  opacity:.9;
+}
+
+/* ===== Layout shells ===== */
+#app{min-height:100vh;display:flex;flex-direction:column;}
+.screen{display:none; flex:1; flex-direction:column;}
+.screen.active{display:flex;}
+
+.topbar{
+  position:sticky; top:0; z-index:40;
+  background:linear-gradient(180deg, var(--steel-800), var(--steel-800) 85%, transparent);
+  border-bottom:1px solid var(--steel-600);
+  padding:14px 18px;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+}
+.brand{display:flex;align-items:center;gap:10px;}
+.brand-mark{
+  width:38px;height:38px;border-radius:8px;
+  background:var(--safety-orange);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:var(--shadow-1);
+  flex-shrink:0;
+}
+.brand-mark svg{width:22px;height:22px;}
+.brand-text h1{font-size:17px;color:#fff;}
+.brand-text span{font-size:11px;color:var(--steel-400);font-family:var(--font-mono);letter-spacing:.5px;}
+
+.nav-pills{display:flex;gap:6px;}
+.nav-pill{
+  background:transparent;border:1px solid var(--steel-600);color:var(--steel-200);
+  padding:8px 14px;border-radius:99px;font-size:13px;font-weight:600;cursor:pointer;
+  transition:all .15s ease;
+}
+.nav-pill.active{background:var(--safety-orange);border-color:var(--safety-orange);color:#fff;}
+.nav-pill:hover:not(.active){border-color:var(--safety-orange);color:#fff;}
+
+.icon-btn{
+  background:var(--steel-700);border:1px solid var(--steel-600);color:var(--steel-200);
+  width:38px;height:38px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:.15s;
+}
+.icon-btn:hover{background:var(--steel-600);color:#fff;}
+
+main{flex:1;padding:18px;padding-bottom:90px;max-width:980px;margin:0 auto;width:100%;}
+
+/* bottom mobile nav */
+.bottom-nav{
+  position:fixed;bottom:0;left:0;right:0;z-index:50;
+  background:var(--steel-800);border-top:1px solid var(--steel-600);
+  display:flex;justify-content:space-around;
+  padding:8px 6px calc(8px + env(safe-area-inset-bottom));
+  box-shadow:0 -4px 20px rgba(0,0,0,.3);
+}
+.bottom-nav button{
+  background:none;border:none;color:var(--steel-400);font-size:11px;font-weight:600;
+  display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px 10px;cursor:pointer;
+  border-radius:8px; flex:1;
+}
+.bottom-nav button.active{color:var(--safety-orange);}
+.bottom-nav svg{width:22px;height:22px;}
+
+@media (min-width:760px){
+  .bottom-nav{display:none;}
+  main{padding-bottom:18px;}
+}
+@media (max-width:759px){
+  .nav-pills{display:none;}
+}
+
+/* ===== Cards / sections ===== */
+.card{
+  background:var(--steel-800);
+  border:1px solid var(--steel-600);
+  border-radius:var(--radius-l);
+  padding:20px;
+  margin-bottom:16px;
+  box-shadow:var(--shadow-1);
+}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px;flex-wrap:wrap;}
+.card-header h2{font-size:15px;color:#fff;display:flex;align-items:center;gap:8px;}
+.eyebrow{
+  font-family:var(--font-mono);font-size:11px;letter-spacing:1.5px;color:var(--safety-orange);
+  text-transform:uppercase;font-weight:700;margin-bottom:6px;display:block;
+}
+
+/* ===== Form elements ===== */
+.field{margin-bottom:16px;}
+.field label{
+  display:block;font-size:13px;font-weight:600;color:var(--steel-200);margin-bottom:7px;
+}
+.field .hint{font-size:11.5px;color:var(--steel-400);margin-top:5px;}
+input[type=text],input[type=date],input[type=number],input[type=password],input[type=email],select,textarea{
+  width:100%;background:var(--steel-900);border:1.5px solid var(--steel-600);color:#fff;
+  padding:11px 13px;border-radius:var(--radius-s);font-size:14.5px;font-family:inherit;
+  transition:border-color .15s;
+}
+input::placeholder,textarea::placeholder{color:var(--steel-400);}
+input:focus,select:focus,textarea:focus{
+  outline:none;border-color:var(--safety-orange);box-shadow:0 0 0 3px rgba(232,89,12,.18);
+}
+textarea{resize:vertical;min-height:70px;}
+.field-row{display:grid;gap:12px;grid-template-columns:1fr 1fr;}
+@media(max-width:560px){.field-row{grid-template-columns:1fr;}}
+
+/* combobox (search-or-create) */
+.combo{position:relative;}
+.combo-list{
+  position:absolute;top:calc(100% + 4px);right:0;left:0;z-index:30;
+  background:var(--steel-700);border:1px solid var(--steel-600);border-radius:var(--radius-s);
+  max-height:230px;overflow-y:auto;box-shadow:var(--shadow-2);display:none;
+}
+.combo-list.open{display:block;}
+.combo-item{padding:10px 13px;cursor:pointer;font-size:14px;display:flex;justify-content:space-between;align-items:center;gap:8px;}
+.combo-item:hover{background:var(--steel-600);}
+.combo-item .tag{font-size:10.5px;color:var(--steel-400);font-family:var(--font-mono);}
+.combo-item.create-new{color:var(--safety-yellow);font-weight:700;border-top:1px solid var(--steel-600);}
+
+/* chip select for workers/actions */
+.chip-field{
+  display:flex;flex-wrap:wrap;gap:8px;background:var(--steel-900);
+  border:1.5px solid var(--steel-600);border-radius:var(--radius-s);padding:10px;min-height:48px;
+}
+.chip{
+  background:var(--steel-600);color:#fff;padding:6px 10px;border-radius:99px;font-size:13px;
+  display:flex;align-items:center;gap:6px;
+}
+.chip button{background:none;border:none;color:var(--steel-200);cursor:pointer;font-size:14px;line-height:1;padding:0;}
+.chip-add-input{
+  flex:1;min-width:120px;background:none;border:none;color:#fff;font-size:13.5px;outline:none;
+}
+
+/* action picker grid */
+.action-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;}
+.action-card{
+  background:var(--steel-900);border:2px solid var(--steel-600);border-radius:var(--radius-m);
+  padding:14px 10px;text-align:center;cursor:pointer;transition:.15s;user-select:none;
+}
+.action-card:hover{border-color:var(--steel-400);}
+.action-card.selected{border-color:var(--safety-orange);background:rgba(232,89,12,.12);}
+.action-card .a-icon{font-size:24px;display:block;margin-bottom:6px;}
+.action-card .a-label{font-size:12.5px;font-weight:700;color:#fff;}
+.action-detail{
+  margin-top:10px;background:rgba(0,0,0,.18);border:1px solid var(--steel-600);
+  border-radius:var(--radius-s);padding:14px;
+}
+.action-detail-title{font-size:12px;font-weight:700;color:var(--safety-yellow);margin-bottom:10px;font-family:var(--font-mono);letter-spacing:.5px;}
+.building-row{
+  display:grid;grid-template-columns:1fr 110px auto;gap:8px;align-items:center;margin-bottom:8px;
+}
+@media(max-width:560px){.building-row{grid-template-columns:1fr;}}
+.small-btn{
+  background:var(--steel-700);border:1px solid var(--steel-600);color:var(--steel-200);
+  padding:9px 12px;border-radius:var(--radius-s);font-size:12.5px;font-weight:700;cursor:pointer;
+}
+.small-btn:hover{background:var(--steel-600);color:#fff;}
+.small-btn.danger{color:var(--danger-red);}
+.small-btn.danger:hover{background:rgba(224,49,49,.15);}
+
+/* buttons */
+.btn{
+  border:none;border-radius:var(--radius-s);font-weight:700;font-size:14.5px;cursor:pointer;
+  padding:13px 22px;transition:.15s;display:inline-flex;align-items:center;gap:8px;justify-content:center;
+}
+.btn-primary{background:var(--safety-orange);color:#fff;box-shadow:0 3px 0 var(--safety-orange-dark);}
+.btn-primary:hover{transform:translateY(1px);box-shadow:0 2px 0 var(--safety-orange-dark);}
+.btn-primary:active{transform:translateY(3px);box-shadow:none;}
+.btn-ghost{background:var(--steel-700);color:var(--steel-100);border:1px solid var(--steel-600);}
+.btn-ghost:hover{background:var(--steel-600);}
+.btn-block{width:100%;}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+
+/* table */
+.table-wrap{overflow-x:auto;border-radius:var(--radius-m);border:1px solid var(--steel-600);}
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:680px;}
+th{
+  background:var(--steel-700);color:var(--steel-200);text-align:right;padding:10px 12px;
+  font-size:11.5px;text-transform:uppercase;letter-spacing:.5px;font-family:var(--font-mono);
+  position:sticky;top:0;white-space:nowrap;
+}
+td{padding:10px 12px;border-bottom:1px solid var(--steel-700);color:var(--steel-100);white-space:nowrap;}
+tbody tr:hover{background:rgba(255,255,255,.03);}
+.badge{
+  display:inline-block;padding:3px 9px;border-radius:99px;font-size:11px;font-weight:700;
+}
+.badge-install{background:rgba(47,158,68,.18);color:#69db7c;}
+.badge-dismantle{background:rgba(224,49,49,.18);color:#ff8787;}
+.badge-other{background:rgba(244,194,13,.18);color:var(--safety-yellow);}
+
+.empty-state{
+  text-align:center;padding:50px 20px;color:var(--steel-400);
+}
+.empty-state .e-icon{font-size:40px;margin-bottom:12px;opacity:.6;}
+.empty-state p{font-size:14px;max-width:320px;margin:6px auto 0;}
+
+.filters-bar{
+  display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;
+}
+.filters-bar select,.filters-bar input{width:auto;min-width:130px;flex:1;}
+
+.stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:16px;}
+.stat-box{
+  background:var(--steel-700);border:1px solid var(--steel-600);border-radius:var(--radius-m);
+  padding:14px 16px;
+}
+.stat-box .num{font-family:var(--font-display);font-size:24px;color:var(--safety-orange);}
+.stat-box .lbl{font-size:11.5px;color:var(--steel-400);margin-top:2px;}
+
+.toast{
+  position:fixed;bottom:90px;right:50%;transform:translateX(50%);z-index:100;
+  background:var(--ok-green);color:#fff;padding:12px 22px;border-radius:99px;font-weight:700;font-size:13.5px;
+  box-shadow:var(--shadow-2);opacity:0;pointer-events:none;transition:all .3s ease;
+  display:flex;align-items:center;gap:8px;
+}
+.toast.show{opacity:1;transform:translateX(50%) translateY(-10px);}
+@media(min-width:760px){.toast{bottom:24px;}}
+
+/* login screen */
+.login-wrap{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;
+}
+.login-card{
+  background:var(--steel-800);border:1px solid var(--steel-600);border-radius:var(--radius-l);
+  padding:38px 30px;max-width:380px;width:100%;text-align:center;box-shadow:var(--shadow-2);
+}
+.login-mark{
+  width:64px;height:64px;border-radius:14px;background:var(--safety-orange);margin:0 auto 18px;
+  display:flex;align-items:center;justify-content:center;
+}
+.login-mark svg{width:36px;height:36px;}
+.login-card h1{font-size:20px;color:#fff;margin-bottom:4px;}
+.login-card p.sub{color:var(--steel-400);font-size:13px;margin:0 0 22px;}
+.login-error{color:var(--danger-red);font-size:13px;margin-top:10px;display:none;font-weight:600;}
+
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:none;
+  align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(2px);
+}
+.modal-overlay.open{display:flex;}
+.modal-box{
+  background:var(--steel-800);border:1px solid var(--steel-600);border-radius:var(--radius-l);
+  padding:24px;max-width:440px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:var(--shadow-2);
+}
+.modal-box h3{font-size:16px;color:#fff;margin-bottom:16px;}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:18px;}
+
+.section-title{font-size:13px;font-weight:700;color:var(--steel-200);margin:18px 0 10px;display:flex;align-items:center;gap:8px;}
+.section-title::after{content:'';flex:1;height:1px;background:var(--steel-600);}
+
+.list-row{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:11px 4px;border-bottom:1px solid var(--steel-700);
+}
+.list-row:last-child{border-bottom:none;}
+.list-row-main{font-size:14px;color:#fff;font-weight:600;}
+.list-row-sub{font-size:12px;color:var(--steel-400);margin-top:2px;}
+
+.notes-box-display{
+  background:var(--steel-900);border:1px solid var(--steel-600);border-radius:var(--radius-s);
+  padding:10px;font-size:12.5px;color:var(--steel-200);max-width:220px;white-space:normal;
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="toast" id="toast"></div>
+<div class="modal-overlay" id="modalOverlay"></div>
+<script>
+/* ====================================================================
+   לוח האתר — ניהול פעילות יומית לעבודות פיגומים
+   כל הנתונים נשמרים ב-localStorage (פרטי למכשיר/דפדפן הזה).
+   ==================================================================== */
+
+const STORAGE_KEY = 'scaffold_board_data_v1';
+const AUTH_KEY     = 'scaffold_board_auth_v1';
+const DEVICE_KEY    = 'scaffold_board_device_v1';
+const APP_PASSWORD_DEFAULT = '1234'; // ניתן לשינוי במסך ההגדרות
+
+/* ---------- device identity (used for merge/sync between people) ---------- */
+function getDeviceInfo(){
+  try{
+    const raw = localStorage.getItem(DEVICE_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  const info = { deviceId: uid('dev'), deviceName: '' };
+  localStorage.setItem(DEVICE_KEY, JSON.stringify(info));
+  return info;
+}
+function setDeviceName(name){
+  const info = getDeviceInfo();
+  info.deviceName = name;
+  localStorage.setItem(DEVICE_KEY, JSON.stringify(info));
+}
+
+const ACTIONS_CATALOG = [
+  {id:'install',    label:'התקנה',          icon:'🏗️', perBuilding:true,  fields:['scaffoldType','bedsCount']},
+  {id:'dismantle',   label:'פירוק',           icon:'🧰', perBuilding:true,  fields:['bedsCount']},
+  {id:'ties',        label:'החלפת קשירות',     icon:'🔗', perBuilding:true,  fields:['notes']},
+  {id:'collect',     label:'איסוף חומר',       icon:'📦', perBuilding:false, fields:['notes']},
+  {id:'lift_install',label:'הרכבת מעלית',     icon:'🛗', perBuilding:true,  fields:['notes']},
+  {id:'lift_remove', label:'פירוק מעלית',     icon:'⬇️', perBuilding:true,  fields:['notes']},
+  {id:'finish',      label:'פיניש',           icon:'✅', perBuilding:true,  fields:['notes']},
+];
+
+let CUSTOM_ACTIONS = []; // actions added by the user at runtime
+
+function getAllActions(){ return [...ACTIONS_CATALOG, ...CUSTOM_ACTIONS]; }
+function getActionById(id){ return getAllActions().find(a=>a.id===id); }
+
+function defaultDB(){
+  return {
+    clients: [],
+    suppliers: [],
+    managers: [],
+    workers: [],
+    entries: [],
+    customActions: [],
+    settings: { password: APP_PASSWORD_DEFAULT }
+  };
+}
+
+function loadDB(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return defaultDB();
+    const parsed = JSON.parse(raw);
+    return { ...defaultDB(), ...parsed };
+  }catch(e){ return defaultDB(); }
+}
+function saveDB(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(DB));
+}
+
+let DB = loadDB();
+CUSTOM_ACTIONS = DB.customActions || [];
+
+function uid(prefix){ return prefix+'_'+Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-4); }
+
+/* ---------------- toast ---------------- */
+function showToast(msg, icon){
+  const t = document.getElementById('toast');
+  t.innerHTML = (icon||'✓')+' '+msg;
+  t.classList.add('show');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(()=>t.classList.remove('show'), 2400);
+}
+
+/* ---------------- modal helper ---------------- */
+function openModal(html){
+  const ov = document.getElementById('modalOverlay');
+  ov.innerHTML = '<div class="modal-box">'+html+'</div>';
+  ov.classList.add('open');
+  ov.onclick = (e)=>{ if(e.target===ov) closeModal(); };
+}
+function closeModal(){
+  document.getElementById('modalOverlay').classList.remove('open');
+}
+
+/* ---------------- auth ---------------- */
+function isAuthed(){ return sessionStorage.getItem(AUTH_KEY)==='1'; }
+function setAuthed(){ sessionStorage.setItem(AUTH_KEY,'1'); }
+function logout(){ sessionStorage.removeItem(AUTH_KEY); render(); }
+
+/* ====================== ROUTER ====================== */
+let currentScreen = 'entry'; // entry | report | data | settings
+let entryForm = freshEntryForm(); // working state for new entry form, initialized eagerly to avoid null on first render
+
+function navigate(screen){
+  currentScreen = screen;
+  if(screen==='entry' && !entryForm){ entryForm = freshEntryForm(); }
+  render();
+}
+
+function freshEntryForm(){
+  return {
+    date: new Date().toISOString().slice(0,10),
+    managerId:null, managerName:'',
+    supplierId:null, supplierName:'',
+    clientId:null, clientName:'',
+    siteId:null, siteName:'',
+    workerIds:[], // {id,name}
+    selectedActions:{}, // actionId -> {buildings:[{buildingId,buildingName,bedsCount,scaffoldType,notes}], notes}
+    generalNotes:''
+  };
+}
+
+/* ====================== RENDER ROOT ====================== */
+function render(){
+  const app = document.getElementById('app');
+  if(!isAuthed()){
+    app.innerHTML = renderLogin();
+    bindLoginEvents();
+    return;
+  }
+  app.innerHTML = renderShell();
+  bindShellEvents();
+}
+
+/* ====================== LOGIN SCREEN ====================== */
+function renderLogin(){
+  return `
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="login-mark">${iconScaffold(36)}</div>
+      <h1>לוח האתר</h1>
+      <p class="sub">ניהול פעילות יומית — עבודות פיגומים</p>
+      <div class="field">
+        <input type="password" id="loginPass" placeholder="הזן סיסמה" autocomplete="off" inputmode="text">
+      </div>
+      <button type="button" class="btn btn-primary btn-block" id="loginBtn">כניסה</button>
+      <div class="login-error" id="loginError">סיסמה שגויה, נסי שוב</div>
+      <p style="font-size:11.5px;color:var(--steel-400);margin-top:16px;">סיסמת ברירת מחדל בכניסה ראשונה: 1234</p>
+    </div>
+  </div>`;
+}
+function bindLoginEvents(){
+  const btn = document.getElementById('loginBtn');
+  const inp = document.getElementById('loginPass');
+  const err = document.getElementById('loginError');
+
+  function tryLogin(){
+    err.style.display='none';
+    const entered = (inp.value||'').trim();
+    const correct = (DB && DB.settings && typeof DB.settings.password==='string') ? DB.settings.password : APP_PASSWORD_DEFAULT;
+    if(entered.length>0 && entered === correct){
+      setAuthed();
+      render();
+    }else{
+      err.style.display='block';
+      inp.value='';
+      inp.focus();
+    }
+  }
+
+  if(btn) btn.addEventListener('click', tryLogin);
+  if(inp){
+    inp.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); tryLogin(); } });
+    inp.focus();
+  }
+}
+
+/* ====================== ICONS (inline svg, stroke-based) ====================== */
+function iconScaffold(size){
+  size=size||22;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M4 21V7M20 21V7M4 7l8-4 8 4M4 11h16M4 15h16"/></svg>`;
+}
+function iconList(){return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg>`}
+function iconPlus(){return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>`}
+function iconReport(){return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19V5M4 19h16M8 15v-4M12 15V8M16 15v-7"/></svg>`}
+function iconDB(){return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>`}
+function iconCog(){return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.21.43.59.74 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`}
+function iconLogout(){return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>`}
+function iconDownload(){return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>`}
+
+/* ====================== SHELL ====================== */
+function renderShell(){
+  return `
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark">${iconScaffold(22)}</div>
+      <div class="brand-text">
+        <h1>לוח האתר</h1>
+        <span>ניהול פעילות יומית</span>
+      </div>
+    </div>
+    <div class="nav-pills">
+      ${navPill('entry','הזנה יומית')}
+      ${navPill('report','דוחות')}
+      ${navPill('data','ניהול נתונים')}
+      ${navPill('settings','הגדרות')}
+    </div>
+    <button class="icon-btn" id="logoutBtn" title="יציאה">${iconLogout()}</button>
+  </div>
+  <main id="mainArea">${renderScreen()}</main>
+  <div class="bottom-nav">
+    ${bottomBtn('entry', iconPlus(), 'הזנה')}
+    ${bottomBtn('report', iconReport(), 'דוחות')}
+    ${bottomBtn('data', iconDB(), 'נתונים')}
+    ${bottomBtn('settings', iconCog(), 'הגדרות')}
+  </div>`;
+}
+function navPill(id,label){
+  return `<button class="nav-pill ${currentScreen===id?'active':''}" data-nav="${id}">${label}</button>`;
+}
+function bottomBtn(id,icon,label){
+  return `<button class="${currentScreen===id?'active':''}" data-nav="${id}">${icon}<span>${label}</span></button>`;
+}
+function bindShellEvents(){
+  document.querySelectorAll('[data-nav]').forEach(b=>{
+    b.onclick = ()=> navigate(b.getAttribute('data-nav'));
+  });
+  const lo = document.getElementById('logoutBtn');
+  if(lo) lo.onclick = logout;
+  bindScreenEvents();
+}
+
+function renderScreen(){
+  if(currentScreen==='entry') return renderEntryScreen();
+  if(currentScreen==='report') return renderReportScreen();
+  if(currentScreen==='data') return renderDataScreen();
+  if(currentScreen==='settings') return renderSettingsScreen();
+  if(currentScreen==='merge') return renderMergeScreen();
+  return '';
+}
+function bindScreenEvents(){
+  if(currentScreen==='entry') bindEntryEvents();
+  if(currentScreen==='report') bindReportEvents();
+  if(currentScreen==='data') bindDataEvents();
+  if(currentScreen==='settings') bindSettingsEvents();
+  if(currentScreen==='merge') bindMergeEvents();
+}
+
+/* ====================== ENTRY SCREEN (the daily form) ====================== */
+function renderEntryScreen(){
+  const f = entryForm;
+  const site = f.siteId ? findSite(f.clientId,f.siteId) : null;
+  const buildings = site ? site.buildings : [];
+
+  return `
+  <div class="tube-rule"></div>
+  <div class="card">
+    <div class="card-header">
+      <h2>📅 פרטי היום</h2>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>תאריך הפעילות</label>
+        <input type="date" id="f_date" value="${f.date}">
+        <div class="hint">אפשר לבחור תאריך מהעבר אם מעדכנים פעילות מאוחר</div>
+      </div>
+      <div class="field">
+        <label>מנהל הקבוצה</label>
+        <div class="combo">
+          <input type="text" id="f_manager" placeholder="הקלידי שם מנהל..." value="${f.managerName}" autocomplete="off">
+          <div class="combo-list" id="f_manager_list"></div>
+        </div>
+      </div>
+    </div>
+    <div class="field">
+      <label>ספק / קבלן מבצע (אופציונלי)</label>
+      <div class="combo">
+        <input type="text" id="f_supplier" placeholder="אם העבודה בוצעה ע״י קבלן חיצוני..." value="${f.supplierName}" autocomplete="off">
+        <div class="combo-list" id="f_supplier_list"></div>
+      </div>
+      <div class="hint">השאירי ריק אם זו קבוצת העובדים הפנימית של החברה</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2>📍 לקוח ואתר</h2></div>
+    <div class="field-row">
+      <div class="field">
+        <label>שם חברה / לקוח</label>
+        <div class="combo">
+          <input type="text" id="f_client" placeholder="הקלידי או בחרי..." value="${f.clientName}" autocomplete="off">
+          <div class="combo-list" id="f_client_list"></div>
+        </div>
+      </div>
+      <div class="field">
+        <label>אתר</label>
+        <div class="combo">
+          <input type="text" id="f_site" placeholder="${f.clientId? 'בחרי או הוסיפי אתר...' : 'בחרי לקוח קודם'}" value="${f.siteName}" autocomplete="off" ${!f.clientId?'disabled':''}>
+          <div class="combo-list" id="f_site_list"></div>
+        </div>
+      </div>
+    </div>
+    ${f.siteId ? `<div class="hint">🏢 בניינים/מתחמים באתר זה: ${buildings.length? buildings.map(b=>b.name).join(', '):'אין עדיין — יתבקש להוסיף בעת בחירת פעולה'}</div>`:''}
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2>👷 עובדים שהיו עם המנהל</h2></div>
+    <div class="field">
+      <div class="chip-field" id="workerChipField">
+        ${f.workerIds.map(w=>`<span class="chip" data-wid="${w.id}">${w.name}<button data-remove-worker="${w.id}">✕</button></span>`).join('')}
+        <input class="chip-add-input" id="workerInput" placeholder="הקלידי שם עובד ואנטר...">
+      </div>
+      <div class="combo-list" id="workerSuggestList" style="position:relative;margin-top:4px;"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2>🔧 פעילות שבוצעה</h2></div>
+    <div class="action-grid" id="actionGrid">
+      ${getAllActions().map(a=>`
+        <div class="action-card ${f.selectedActions[a.id]?'selected':''}" data-action="${a.id}">
+          <span class="a-icon">${a.icon}</span>
+          <span class="a-label">${a.label}</span>
+        </div>`).join('')}
+      <div class="action-card" id="addCustomActionCard" style="border-style:dashed;opacity:.8;">
+        <span class="a-icon">➕</span>
+        <span class="a-label">הוסף פעילות</span>
+      </div>
+    </div>
+    <div id="actionDetailsContainer">
+      ${Object.keys(f.selectedActions).map(actId=>renderActionDetail(actId)).join('')}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2>📝 הערות כלליות</h2></div>
+    <div class="field">
+      <textarea id="f_generalNotes" placeholder="כל מידע נוסף שחשוב לתעד...">${f.generalNotes}</textarea>
+    </div>
+  </div>
+
+  <button class="btn btn-primary btn-block" id="submitEntryBtn" style="padding:16px;font-size:16px;">
+    ✓ שמירת רישום היום
+  </button>
+  `;
+}
+
+function renderActionDetail(actionId){
+  const f = entryForm;
+  const action = getActionById(actionId);
+  if(!action) return '';
+  const data = f.selectedActions[actionId];
+  const site = f.siteId ? findSite(f.clientId,f.siteId) : null;
+  const buildings = site ? site.buildings : [];
+
+  if(!action.perBuilding){
+    return `
+    <div class="action-detail" data-detail-for="${actionId}">
+      <div class="action-detail-title">${action.icon} ${action.label}</div>
+      <div class="field" style="margin-bottom:0;">
+        <label>הערות לפעולה זו</label>
+        <textarea data-act-notes="${actionId}" placeholder="פירוט...">${data.notes||''}</textarea>
+      </div>
+    </div>`;
+  }
+
+  // per-building action (install/dismantle/ties/lifts/finish)
+  const rows = data.buildings.map((b,idx)=>{
+    let extraField = '';
+    if(action.fields.includes('scaffoldType')){
+      extraField += `
+        <select data-bfield="scaffoldType" data-act="${actionId}" data-bidx="${idx}">
+          <option value="רגיל" ${b.scaffoldType==='רגיל'?'selected':''}>פיגום רגיל</option>
+          <option value="אירופי" ${b.scaffoldType==='אירופי'?'selected':''}>פיגום אירופי</option>
+        </select>`;
+    }
+    if(action.fields.includes('bedsCount')){
+      extraField += `<input type="number" min="0" placeholder="מס׳ מיטות" data-bfield="bedsCount" data-act="${actionId}" data-bidx="${idx}" value="${b.bedsCount||''}">`;
+    }
+    return `
+    <div class="building-row">
+      <select data-bfield="buildingId" data-act="${actionId}" data-bidx="${idx}">
+        <option value="">בחר בניין/מתחם...</option>
+        ${buildings.map(bld=>`<option value="${bld.id}" ${b.buildingId===bld.id?'selected':''}>${bld.name}</option>`).join('')}
+        <option value="__new__">➕ בניין/מתחם חדש...</option>
+      </select>
+      ${extraField}
+      <button class="small-btn danger" data-remove-brow="${actionId}|${idx}">✕</button>
+    </div>`;
+  }).join('');
+
+  return `
+  <div class="action-detail" data-detail-for="${actionId}">
+    <div class="action-detail-title">${action.icon} ${action.label} — לפי בניין/מתחם</div>
+    ${rows || '<div class="hint" style="margin-bottom:8px;">לא נוספו בניינים עדיין</div>'}
+    <button class="small-btn" data-add-brow="${actionId}" style="margin-top:4px;">➕ הוסף בניין/מתחם</button>
+    <div class="field" style="margin:12px 0 0;">
+      <label style="font-size:12px;">הערות לפעולה (אופציונלי)</label>
+      <textarea data-act-notes="${actionId}" placeholder="פירוט נוסף...">${data.notes||''}</textarea>
+    </div>
+  </div>`;
+}
+
+/* ---------- data helpers ---------- */
+function findClient(clientId){ return DB.clients.find(c=>c.id===clientId); }
+function findSite(clientId,siteId){
+  const c = findClient(clientId);
+  if(!c) return null;
+  return c.sites.find(s=>s.id===siteId);
+}
+function getOrCreateClient(name){
+  let c = DB.clients.find(c=>c.name.trim().toLowerCase()===name.trim().toLowerCase());
+  if(!c){ c = {id:uid('client'),name:name.trim(),sites:[]}; DB.clients.push(c); }
+  return c;
+}
+function getOrCreateSite(client,name){
+  let s = client.sites.find(s=>s.name.trim().toLowerCase()===name.trim().toLowerCase());
+  if(!s){ s = {id:uid('site'),name:name.trim(),buildings:[]}; client.sites.push(s); }
+  return s;
+}
+function getOrCreateBuilding(site,name){
+  let b = site.buildings.find(b=>b.name.trim().toLowerCase()===name.trim().toLowerCase());
+  if(!b){ b = {id:uid('bld'),name:name.trim()}; site.buildings.push(b); }
+  return b;
+}
+function getOrCreateManager(name){
+  let m = DB.managers.find(m=>m.name.trim().toLowerCase()===name.trim().toLowerCase());
+  if(!m){ m = {id:uid('mgr'),name:name.trim()}; DB.managers.push(m); }
+  return m;
+}
+function getOrCreateSupplier(name){
+  let s = DB.suppliers.find(s=>s.name.trim().toLowerCase()===name.trim().toLowerCase());
+  if(!s){ s = {id:uid('sup'),name:name.trim()}; DB.suppliers.push(s); }
+  return s;
+}
+function getOrCreateWorker(name){
+  let w = DB.workers.find(w=>w.name.trim().toLowerCase()===name.trim().toLowerCase());
+  if(!w){ w = {id:uid('wrk'),name:name.trim()}; DB.workers.push(w); }
+  return w;
+}
+
+/* ---------- generic combo binder ---------- */
+function bindCombo(inputId, listId, getOptions, onPick, opts){
+  opts = opts||{};
+  const input = document.getElementById(inputId);
+  const list = document.getElementById(listId);
+  if(!input || !list) return;
+
+  function renderList(){
+    const q = input.value.trim().toLowerCase();
+    const options = getOptions();
+    let matches = q ? options.filter(o=>o.label.toLowerCase().includes(q)) : options;
+    matches = matches.slice(0,8);
+    let html = matches.map(o=>`<div class="combo-item" data-pick="${o.id}">${o.label}${o.tag?`<span class="tag">${o.tag}</span>`:''}</div>`).join('');
+    if(q && !options.some(o=>o.label.toLowerCase()===q)){
+      html += `<div class="combo-item create-new" data-create="1">➕ הוסף "${input.value.trim()}"</div>`;
+    }
+    list.innerHTML = html;
+    list.classList.toggle('open', html.length>0 && document.activeElement===input);
+  }
+  input.addEventListener('focus', renderList);
+  input.addEventListener('input', ()=>{ if(opts.onInput) opts.onInput(input.value); renderList(); });
+  input.addEventListener('blur', ()=> setTimeout(()=>list.classList.remove('open'), 150));
+  input.addEventListener('keydown', e=>{
+    if(e.key==='Enter'){
+      e.preventDefault();
+      const val = input.value.trim();
+      if(!val){ list.classList.remove('open'); return; }
+      const options = getOptions();
+      const exact = options.find(o=>o.label.toLowerCase()===val.toLowerCase());
+      if(exact){ onPick(exact.id, exact.label, false); }
+      else { onPick(null, val, true); }
+      list.classList.remove('open');
+    } else if(e.key==='Escape'){
+      list.classList.remove('open');
+    }
+  });
+  list.addEventListener('mousedown', e=>{
+    const pick = e.target.closest('[data-pick]');
+    const create = e.target.closest('[data-create]');
+    if(pick){
+      const id = pick.getAttribute('data-pick');
+      const opt = getOptions().find(o=>o.id===id);
+      onPick(opt.id, opt.label, false);
+    } else if(create){
+      onPick(null, input.value.trim(), true);
+    }
+    list.classList.remove('open');
+  });
+}
+
+function bindEntryEvents(){
+  const f = entryForm;
+
+  document.getElementById('f_date').onchange = e=>{ f.date = e.target.value; };
+
+  // manager combo
+  bindCombo('f_manager','f_manager_list',
+    ()=> DB.managers.map(m=>({id:m.id,label:m.name})),
+    (id,label,isNew)=>{
+      f.managerName = label;
+      if(isNew){ const m = getOrCreateManager(label); f.managerId = m.id; saveDB(); }
+      else f.managerId = id;
+      document.getElementById('f_manager').value = label;
+    }
+  );
+
+  // supplier combo
+  bindCombo('f_supplier','f_supplier_list',
+    ()=> DB.suppliers.map(s=>({id:s.id,label:s.name})),
+    (id,label,isNew)=>{
+      f.supplierName = label;
+      if(isNew && label){ const s = getOrCreateSupplier(label); f.supplierId = s.id; saveDB(); }
+      else f.supplierId = id;
+      document.getElementById('f_supplier').value = label;
+    }
+  );
+
+  // client combo
+  bindCombo('f_client','f_client_list',
+    ()=> DB.clients.map(c=>({id:c.id,label:c.name,tag:c.sites.length+' אתרים'})),
+    (id,label,isNew)=>{
+      f.clientName = label;
+      f.siteId=null; f.siteName='';
+      if(isNew){
+        const c = getOrCreateClient(label); f.clientId = c.id; saveDB();
+      } else {
+        f.clientId = id;
+      }
+      render(); // re-render to unlock site field
+    }
+  );
+
+  // site combo (depends on client)
+  if(f.clientId){
+    const client = findClient(f.clientId);
+    bindCombo('f_site','f_site_list',
+      ()=> client.sites.map(s=>({id:s.id,label:s.name,tag:s.buildings.length+' בניינים'})),
+      (id,label,isNew)=>{
+        f.siteName = label;
+        if(isNew){
+          const s = getOrCreateSite(client,label); f.siteId = s.id; saveDB();
+        } else {
+          f.siteId = id;
+        }
+        render();
+      }
+    );
+  }
+
+  // worker chip input
+  const wInput = document.getElementById('workerInput');
+  const wSuggest = document.getElementById('workerSuggestList');
+  function renderWorkerSuggest(){
+    const q = wInput.value.trim().toLowerCase();
+    if(!q){ wSuggest.classList.remove('open'); wSuggest.innerHTML=''; return; }
+    const matches = DB.workers.filter(w=>
+      w.name.toLowerCase().includes(q) && !f.workerIds.some(fw=>fw.id===w.id)
+    ).slice(0,6);
+    let html = matches.map(w=>`<div class="combo-item" data-pickworker="${w.id}">${w.name}</div>`).join('');
+    html += `<div class="combo-item create-new" data-createworker="1">➕ הוסף "${wInput.value.trim()}"</div>`;
+    wSuggest.innerHTML = html;
+    wSuggest.classList.add('open');
+  }
+  wInput.addEventListener('input', renderWorkerSuggest);
+  wInput.addEventListener('keydown', e=>{
+    if(e.key==='Enter'){
+      e.preventDefault();
+      const val = wInput.value.trim();
+      if(!val) return;
+      const w = getOrCreateWorker(val);
+      if(!f.workerIds.some(fw=>fw.id===w.id)) f.workerIds.push({id:w.id,name:w.name});
+      saveDB();
+      wInput.value='';
+      render();
+    }
+  });
+  wInput.addEventListener('blur', ()=> setTimeout(()=>wSuggest.classList.remove('open'),150));
+  wSuggest.addEventListener('mousedown', e=>{
+    const pick = e.target.closest('[data-pickworker]');
+    const create = e.target.closest('[data-createworker]');
+    if(pick){
+      const w = DB.workers.find(w=>w.id===pick.getAttribute('data-pickworker'));
+      f.workerIds.push({id:w.id,name:w.name});
+    } else if(create){
+      const w = getOrCreateWorker(wInput.value.trim());
+      if(!f.workerIds.some(fw=>fw.id===w.id)) f.workerIds.push({id:w.id,name:w.name});
+      saveDB();
+    }
+    wInput.value='';
+    render();
+  });
+  document.querySelectorAll('[data-remove-worker]').forEach(btn=>{
+    btn.onclick = ()=>{
+      const id = btn.getAttribute('data-remove-worker');
+      f.workerIds = f.workerIds.filter(w=>w.id!==id);
+      render();
+    };
+  });
+
+  // action cards toggle
+  document.querySelectorAll('#actionGrid .action-card[data-action]').forEach(card=>{
+    card.onclick = ()=>{
+      const actId = card.getAttribute('data-action');
+      if(f.selectedActions[actId]){
+        delete f.selectedActions[actId];
+      } else {
+        f.selectedActions[actId] = {buildings:[{buildingId:'',buildingName:'',bedsCount:'',scaffoldType:'רגיל',notes:''}], notes:''};
+      }
+      render();
+    };
+  });
+  const addCustom = document.getElementById('addCustomActionCard');
+  if(addCustom) addCustom.onclick = ()=> openAddCustomActionModal();
+
+  // action notes
+  document.querySelectorAll('[data-act-notes]').forEach(ta=>{
+    ta.oninput = ()=>{
+      const actId = ta.getAttribute('data-act-notes');
+      f.selectedActions[actId].notes = ta.value;
+    };
+  });
+
+  // building rows: field changes
+  document.querySelectorAll('[data-bfield]').forEach(el=>{
+    el.onchange = ()=>{
+      const actId = el.getAttribute('data-act');
+      const idx = parseInt(el.getAttribute('data-bidx'));
+      const field = el.getAttribute('data-bfield');
+      const bdata = f.selectedActions[actId].buildings[idx];
+      if(field==='buildingId'){
+        if(el.value==='__new__'){
+          const name = prompt('שם הבניין/מתחם החדש:');
+          if(name && name.trim()){
+            const site = findSite(f.clientId,f.siteId);
+            const b = getOrCreateBuilding(site,name.trim());
+            saveDB();
+            bdata.buildingId = b.id; bdata.buildingName = b.name;
+          } else {
+            bdata.buildingId=''; bdata.buildingName='';
+          }
+          render();
+          return;
+        }
+        const site = findSite(f.clientId,f.siteId);
+        const bld = site.buildings.find(b=>b.id===el.value);
+        bdata.buildingId = el.value;
+        bdata.buildingName = bld? bld.name : '';
+      } else {
+        bdata[field] = el.value;
+      }
+    };
+  });
+  document.querySelectorAll('[data-add-brow]').forEach(btn=>{
+    btn.onclick = ()=>{
+      const actId = btn.getAttribute('data-add-brow');
+      f.selectedActions[actId].buildings.push({buildingId:'',buildingName:'',bedsCount:'',scaffoldType:'רגיל',notes:''});
+      render();
+    };
+  });
+  document.querySelectorAll('[data-remove-brow]').forEach(btn=>{
+    btn.onclick = ()=>{
+      const [actId,idxStr] = btn.getAttribute('data-remove-brow').split('|');
+      f.selectedActions[actId].buildings.splice(parseInt(idxStr),1);
+      render();
+    };
+  });
+
+  document.getElementById('f_generalNotes').oninput = e=>{ f.generalNotes = e.target.value; };
+
+  document.getElementById('submitEntryBtn').onclick = submitEntry;
+}
+
+function openAddCustomActionModal(){
+  openModal(`
+    <h3>➕ הוספת סוג פעילות חדש</h3>
+    <div class="field">
+      <label>שם הפעילות</label>
+      <input type="text" id="newActLabel" placeholder="לדוגמה: בדיקת תקינות">
+    </div>
+    <div class="field">
+      <label>אייקון (אופציונלי — אמוג׳י)</label>
+      <input type="text" id="newActIcon" placeholder="🔧" maxlength="2">
+    </div>
+    <div class="field" style="margin-bottom:0;">
+      <label><input type="checkbox" id="newActPerBuilding" checked style="width:auto;margin-left:6px;"> פעילות לפי בניין/מתחם (עם מיטות/סוג פיגום)</label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="cancelNewAct">ביטול</button>
+      <button class="btn btn-primary" id="saveNewAct">הוסף פעילות</button>
+    </div>
+  `);
+  document.getElementById('cancelNewAct').onclick = closeModal;
+  document.getElementById('saveNewAct').onclick = ()=>{
+    const label = document.getElementById('newActLabel').value.trim();
+    if(!label){ showToast('נא להזין שם פעילות','⚠️'); return; }
+    const icon = document.getElementById('newActIcon').value.trim() || '🔧';
+    const perBuilding = document.getElementById('newActPerBuilding').checked;
+    const newAct = {id:uid('act'), label, icon, perBuilding, fields: perBuilding?['bedsCount']:['notes'], custom:true};
+    CUSTOM_ACTIONS.push(newAct);
+    DB.customActions = CUSTOM_ACTIONS;
+    saveDB();
+    closeModal();
+    showToast('פעילות נוספה בהצלחה');
+    render();
+  };
+}
+
+function submitEntry(){
+  const f = entryForm;
+  if(!f.managerName.trim() || !f.managerId){ showToast('נא לבחור מנהל קבוצה מהרשימה או להוסיף חדש','⚠️'); return; }
+  if(!f.clientName.trim() || !f.clientId){ showToast('נא לבחור לקוח','⚠️'); return; }
+  if(!f.siteName.trim() || !f.siteId){ showToast('נא לבחור אתר','⚠️'); return; }
+  if(Object.keys(f.selectedActions).length===0){ showToast('נא לבחור לפחות פעילות אחת','⚠️'); return; }
+
+  // validate building selections for perBuilding actions
+  for(const actId of Object.keys(f.selectedActions)){
+    const action = getActionById(actId);
+    if(action.perBuilding){
+      const bds = f.selectedActions[actId].buildings;
+      if(bds.length===0 || bds.some(b=>!b.buildingId)){
+        showToast(`נא לבחור בניין/מתחם לפעולת "${action.label}"`,'⚠️');
+        return;
+      }
+    }
+  }
+
+  const device = getDeviceInfo();
+  const entry = {
+    id: uid('entry'),
+    date: f.date,
+    loggedAt: new Date().toISOString(),
+    enteredByDevice: device.deviceName || 'לא צוין',
+    deviceId: device.deviceId,
+    managerId: f.managerId, managerName: f.managerName,
+    supplierId: f.supplierId, supplierName: f.supplierName,
+    clientId: f.clientId, clientName: f.clientName,
+    siteId: f.siteId, siteName: f.siteName,
+    workerIds: f.workerIds.map(w=>w.id), workerNames: f.workerIds.map(w=>w.name),
+    actions: Object.keys(f.selectedActions).map(actId=>{
+      const action = getActionById(actId);
+      const data = f.selectedActions[actId];
+      return {
+        actionId: actId,
+        actionLabel: action.label,
+        notes: data.notes||'',
+        buildings: action.perBuilding ? data.buildings.map(b=>({
+          buildingId:b.buildingId, buildingName:b.buildingName,
+          bedsCount:b.bedsCount||'', scaffoldType:b.scaffoldType||''
+        })) : []
+      };
+    }),
+    generalNotes: f.generalNotes
+  };
+
+  DB.entries.push(entry);
+  saveDB();
+  showToast('הרישום נשמר בהצלחה!');
+  entryForm = freshEntryForm();
+  render();
+}
+
+/* ====================== REPORT SCREEN ====================== */
+let reportFilters = { client:'', site:'', manager:'', supplier:'', worker:'', month:'', actionType:'', device:'' };
+
+function getFilteredEntries(){
+  return DB.entries.filter(e=>{
+    if(reportFilters.client && e.clientId !== reportFilters.client) return false;
+    if(reportFilters.site && e.siteId !== reportFilters.site) return false;
+    if(reportFilters.manager && e.managerId !== reportFilters.manager) return false;
+    if(reportFilters.supplier && e.supplierId !== reportFilters.supplier) return false;
+    if(reportFilters.worker && !e.workerIds.includes(reportFilters.worker)) return false;
+    if(reportFilters.month && !e.date.startsWith(reportFilters.month)) return false;
+    if(reportFilters.actionType && !e.actions.some(a=>a.actionId===reportFilters.actionType)) return false;
+    if(reportFilters.device && e.enteredByDevice !== reportFilters.device) return false;
+    return true;
+  }).sort((a,b)=> b.date.localeCompare(a.date));
+}
+
+function renderReportScreen(){
+  const entries = getFilteredEntries();
+  const totalBeds = entries.reduce((sum,e)=>{
+    return sum + e.actions.reduce((s,a)=>{
+      if(a.actionId!=='install') return s;
+      return s + a.buildings.reduce((bs,b)=> bs + (parseInt(b.bedsCount)||0), 0);
+    },0);
+  },0);
+  const uniqueSites = new Set(entries.map(e=>e.siteId)).size;
+  const uniqueWorkers = new Set(entries.flatMap(e=>e.workerIds)).size;
+
+  return `
+  <div class="tube-rule"></div>
+  <div class="card">
+    <div class="card-header">
+      <h2>🔍 סינון</h2>
+      <button class="small-btn" id="clearFiltersBtn">איפוס סינון</button>
+    </div>
+    <div class="filters-bar">
+      <select id="filt_client">
+        <option value="">כל הלקוחות</option>
+        ${DB.clients.map(c=>`<option value="${c.id}" ${reportFilters.client===c.id?'selected':''}>${c.name}</option>`).join('')}
+      </select>
+      <select id="filt_site">
+        <option value="">כל האתרים</option>
+        ${(reportFilters.client ? findClient(reportFilters.client).sites : DB.clients.flatMap(c=>c.sites)).map(s=>`<option value="${s.id}" ${reportFilters.site===s.id?'selected':''}>${s.name}</option>`).join('')}
+      </select>
+      <select id="filt_manager">
+        <option value="">כל המנהלים</option>
+        ${DB.managers.map(m=>`<option value="${m.id}" ${reportFilters.manager===m.id?'selected':''}>${m.name}</option>`).join('')}
+      </select>
+      <select id="filt_supplier">
+        <option value="">כל הספקים</option>
+        ${DB.suppliers.map(s=>`<option value="${s.id}" ${reportFilters.supplier===s.id?'selected':''}>${s.name}</option>`).join('')}
+      </select>
+      <select id="filt_worker">
+        <option value="">כל העובדים</option>
+        ${DB.workers.map(w=>`<option value="${w.id}" ${reportFilters.worker===w.id?'selected':''}>${w.name}</option>`).join('')}
+      </select>
+      <select id="filt_action">
+        <option value="">כל סוגי הפעולה</option>
+        ${getAllActions().map(a=>`<option value="${a.id}" ${reportFilters.actionType===a.id?'selected':''}>${a.icon} ${a.label}</option>`).join('')}
+      </select>
+      <input type="month" id="filt_month" value="${reportFilters.month}">
+      <select id="filt_device">
+        <option value="">כל המקורות</option>
+        ${[...new Set(DB.entries.map(e=>e.enteredByDevice).filter(Boolean))].map(d=>`<option value="${d}" ${reportFilters.device===d?'selected':''}>${d}</option>`).join('')}
+      </select>
+    </div>
+  </div>
+
+  <div class="stat-row">
+    <div class="stat-box"><div class="num">${entries.length}</div><div class="lbl">רישומים</div></div>
+    <div class="stat-box"><div class="num">${uniqueSites}</div><div class="lbl">אתרים</div></div>
+    <div class="stat-box"><div class="num">${uniqueWorkers}</div><div class="lbl">עובדים</div></div>
+    <div class="stat-box"><div class="num">${totalBeds}</div><div class="lbl">מיטות שהותקנו</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2>📋 תוצאות (${entries.length})</h2>
+      <button class="btn btn-primary" id="exportExcelBtn">${iconDownload()} ייצוא לאקסל</button>
+    </div>
+    ${entries.length===0 ? `
+      <div class="empty-state">
+        <div class="e-icon">📭</div>
+        <p>אין רישומים תואמים לסינון. נסי לשנות את הפילטרים, או הוסיפי רישום חדש במסך ההזנה.</p>
+      </div>` : `
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>תאריך</th><th>לקוח</th><th>אתר</th><th>מנהל</th><th>ספק</th>
+          <th>עובדים</th><th>פעולות</th><th>בניינים / מיטות</th><th>הערות</th><th>הוזן ע״י</th>
+        </tr></thead>
+        <tbody>
+          ${entries.map(e=>renderEntryRow(e)).join('')}
+        </tbody>
+      </table>
+    </div>`}
+  </div>
+  `;
+}
+
+function renderEntryRow(e){
+  const dateStr = formatDateHe(e.date);
+  const actionsHtml = e.actions.map(a=>{
+    const cls = a.actionId==='install'?'badge-install': a.actionId==='dismantle'?'badge-dismantle':'badge-other';
+    return `<span class="badge ${cls}">${getActionById(a.actionId)?.icon||''} ${a.actionLabel}</span>`;
+  }).join(' ');
+  const buildingsHtml = e.actions.flatMap(a=>
+    a.buildings.map(b=>{
+      let parts = [b.buildingName];
+      if(b.scaffoldType) parts.push(b.scaffoldType);
+      if(b.bedsCount) parts.push(b.bedsCount+' מיטות');
+      return `${a.actionLabel}: ${parts.filter(Boolean).join(' · ')}`;
+    })
+  ).join('<br>') || '—';
+  const notesAll = [e.generalNotes, ...e.actions.map(a=>a.notes)].filter(Boolean).join(' | ') || '—';
+
+  return `<tr>
+    <td>${dateStr}</td>
+    <td>${e.clientName}</td>
+    <td>${e.siteName}</td>
+    <td>${e.managerName}</td>
+    <td>${e.supplierName||'—'}</td>
+    <td>${e.workerNames.join(', ')||'—'}</td>
+    <td>${actionsHtml}</td>
+    <td><div class="notes-box-display">${buildingsHtml}</div></td>
+    <td><div class="notes-box-display">${notesAll}</div></td>
+    <td>${e.enteredByDevice||'—'}</td>
+  </tr>`;
+}
+
+function formatDateHe(iso){
+  const [y,m,d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function bindReportEvents(){
+  document.getElementById('filt_client').onchange = e=>{ reportFilters.client=e.target.value; reportFilters.site=''; render(); };
+  document.getElementById('filt_site').onchange = e=>{ reportFilters.site=e.target.value; render(); };
+  document.getElementById('filt_manager').onchange = e=>{ reportFilters.manager=e.target.value; render(); };
+  document.getElementById('filt_supplier').onchange = e=>{ reportFilters.supplier=e.target.value; render(); };
+  document.getElementById('filt_worker').onchange = e=>{ reportFilters.worker=e.target.value; render(); };
+  document.getElementById('filt_action').onchange = e=>{ reportFilters.actionType=e.target.value; render(); };
+  document.getElementById('filt_month').onchange = e=>{ reportFilters.month=e.target.value; render(); };
+  document.getElementById('filt_device').onchange = e=>{ reportFilters.device=e.target.value; render(); };
+  document.getElementById('clearFiltersBtn').onclick = ()=>{ reportFilters = {client:'',site:'',manager:'',supplier:'',worker:'',month:'',actionType:'',device:''}; render(); };
+  document.getElementById('exportExcelBtn').onclick = exportToExcel;
+}
+
+/* ====================== EXCEL EXPORT ====================== */
+function exportToExcel(){
+  const entries = getFilteredEntries();
+  if(entries.length===0){ showToast('אין נתונים לייצוא','⚠️'); return; }
+
+  // Sheet 1: detailed rows (one row per building-action, easiest for pivoting)
+  const detailRows = [];
+  entries.forEach(e=>{
+    if(e.actions.length===0){
+      detailRows.push(baseRow(e,null,null));
+    }
+    e.actions.forEach(a=>{
+      if(a.buildings && a.buildings.length>0){
+        a.buildings.forEach(b=> detailRows.push(baseRow(e,a,b)));
+      } else {
+        detailRows.push(baseRow(e,a,null));
+      }
+    });
+  });
+
+  // Sheet 2: summary per entry (one row per daily log)
+  const summaryRows = entries.map(e=>({
+    'תאריך':formatDateHe(e.date),
+    'חודש': e.date.slice(0,7),
+    'לקוח':e.clientName,
+    'אתר':e.siteName,
+    'מנהל':e.managerName,
+    'ספק/קבלן':e.supplierName||'',
+    'עובדים':e.workerNames.join(', '),
+    'מספר עובדים':e.workerNames.length,
+    'סוגי פעולה':e.actions.map(a=>a.actionLabel).join(', '),
+    'סה״כ מיטות הותקנו': e.actions.filter(a=>a.actionId==='install').reduce((s,a)=>s+a.buildings.reduce((bs,b)=>bs+(parseInt(b.bedsCount)||0),0),0),
+    'סה״כ מיטות פורקו': e.actions.filter(a=>a.actionId==='dismantle').reduce((s,a)=>s+a.buildings.reduce((bs,b)=>bs+(parseInt(b.bedsCount)||0),0),0),
+    'הערות כלליות':e.generalNotes||'',
+    'הוזן ע״י':e.enteredByDevice||''
+  }));
+
+  const wb = XLSX.utils.book_new();
+  const ws1 = XLSX.utils.json_to_sheet(summaryRows);
+  const ws2 = XLSX.utils.json_to_sheet(detailRows);
+  autoFitColumns(ws1, summaryRows);
+  autoFitColumns(ws2, detailRows);
+  XLSX.utils.book_append_sheet(wb, ws1, 'סיכום יומי');
+  XLSX.utils.book_append_sheet(wb, ws2, 'פירוט לפי בניין');
+
+  const monthLabel = reportFilters.month || 'הכל';
+  const filename = `דוח_פעילות_${monthLabel}_${new Date().toISOString().slice(0,10)}.xlsx`;
+  XLSX.writeFile(wb, filename);
+  showToast('קובץ אקסל יוצא בהצלחה!','📥');
+}
+
+function baseRow(e,a,b){
+  return {
+    'תאריך':formatDateHe(e.date),
+    'חודש': e.date.slice(0,7),
+    'לקוח':e.clientName,
+    'אתר':e.siteName,
+    'בניין/מתחם': b? b.buildingName : '',
+    'מנהל':e.managerName,
+    'ספק/קבלן':e.supplierName||'',
+    'עובדים':e.workerNames.join(', '),
+    'סוג פעולה': a? a.actionLabel : '',
+    'סוג פיגום': b? (b.scaffoldType||''):'',
+    'מספר מיטות': b? (b.bedsCount||''):'',
+    'הערות פעולה': a? (a.notes||''):'',
+    'הערות כלליות':e.generalNotes||'',
+    'הוזן ע״י':e.enteredByDevice||''
+  };
+}
+function autoFitColumns(ws, rows){
+  if(rows.length===0) return;
+  const keys = Object.keys(rows[0]);
+  ws['!cols'] = keys.map(k=>{
+    const maxLen = Math.max(k.length, ...rows.map(r=> (r[k]!==undefined? String(r[k]).length : 0)));
+    return { wch: Math.min(Math.max(maxLen+2, 10), 40) };
+  });
+}
+
+/* ====================== DATA MANAGEMENT SCREEN ====================== */
+let dataTab = 'clients'; // clients | managers | suppliers | workers | actions
+
+function renderDataScreen(){
+  return `
+  <div class="tube-rule"></div>
+  <div class="card">
+    <div class="card-header"><h2>🗄️ ניהול נתונים</h2></div>
+    <div class="filters-bar" style="margin-bottom:6px;">
+      ${dataTabBtn('clients','🏢 לקוחות ואתרים')}
+      ${dataTabBtn('managers','👤 מנהלים')}
+      ${dataTabBtn('suppliers','🏗️ ספקים/קבלנים')}
+      ${dataTabBtn('workers','👷 עובדים')}
+      ${dataTabBtn('actions','🔧 סוגי פעילות')}
+    </div>
+  </div>
+  <div class="card">${renderDataTabContent()}</div>
+  `;
+}
+function dataTabBtn(id,label){
+  return `<button class="nav-pill ${dataTab===id?'active':''}" data-datatab="${id}" style="flex:1;">${label}</button>`;
+}
+
+function renderDataTabContent(){
+  if(dataTab==='clients') return renderClientsTab();
+  if(dataTab==='managers') return renderSimpleListTab('managers','מנהל','managers');
+  if(dataTab==='suppliers') return renderSimpleListTab('suppliers','ספק/קבלן','suppliers');
+  if(dataTab==='workers') return renderSimpleListTab('workers','עובד','workers');
+  if(dataTab==='actions') return renderActionsTab();
+}
+
+function renderClientsTab(){
+  if(DB.clients.length===0){
+    return `<div class="empty-state"><div class="e-icon">🏢</div><p>אין עדיין לקוחות. הוסיפי לקוח חדש כדי להתחיל.</p></div>
+    <button class="btn btn-primary btn-block" id="addClientBtn" style="margin-top:14px;">➕ הוסף לקוח חדש</button>`;
+  }
+  return `
+    <button class="btn btn-primary btn-block" id="addClientBtn" style="margin-bottom:16px;">➕ הוסף לקוח חדש</button>
+    ${DB.clients.map(c=>`
+      <div class="section-title"><span>${c.name}</span></div>
+      <div class="list-row">
+        <div>
+          <div class="list-row-sub">${c.sites.length} אתרים</div>
+        </div>
+        <div style="display:flex;gap:6px;">
+          <button class="small-btn" data-addsite="${c.id}">➕ אתר</button>
+          <button class="small-btn danger" data-delclient="${c.id}">מחק לקוח</button>
+        </div>
+      </div>
+      ${c.sites.map(s=>`
+        <div class="list-row" style="padding-right:16px;">
+          <div>
+            <div class="list-row-main" style="font-size:13.5px;">📍 ${s.name}</div>
+            <div class="list-row-sub">${s.buildings.map(b=>b.name).join(', ')||'אין בניינים'}</div>
+          </div>
+          <div style="display:flex;gap:6px;">
+            <button class="small-btn" data-addbuilding="${c.id}|${s.id}">➕ בניין</button>
+            <button class="small-btn danger" data-delsite="${c.id}|${s.id}">מחק</button>
+          </div>
+        </div>
+      `).join('')}
+    `).join('')}
+  `;
+}
+
+function renderSimpleListTab(dbKey,singular){
+  const items = DB[dbKey];
+  return `
+    <button class="btn btn-primary btn-block" id="addSimpleBtn" style="margin-bottom:16px;">➕ הוסף ${singular}</button>
+    ${items.length===0 ? `<div class="empty-state"><div class="e-icon">📋</div><p>אין עדיין רשומות.</p></div>` :
+      items.map(it=>{
+        const usageCount = DB.entries.filter(e=>{
+          if(dbKey==='managers') return e.managerId===it.id;
+          if(dbKey==='suppliers') return e.supplierId===it.id;
+          if(dbKey==='workers') return e.workerIds.includes(it.id);
+        }).length;
+        return `<div class="list-row">
+          <div>
+            <div class="list-row-main">${it.name}</div>
+            <div class="list-row-sub">${usageCount} רישומים</div>
+          </div>
+          <button class="small-btn danger" data-delsimple="${dbKey}|${it.id}">מחק</button>
+        </div>`;
+      }).join('')}
+  `;
+}
+
+function renderActionsTab(){
+  return `
+    <div class="hint" style="margin-bottom:14px;">פעולות הבסיס (התקנה, פירוק וכו׳) מובנות באפליקציה. כאן ניתן להוסיף סוגי פעילות מותאמים, או למחוק כאלה שהוספת בעבר.</div>
+    ${getAllActions().map(a=>`
+      <div class="list-row">
+        <div class="list-row-main">${a.icon} ${a.label} ${a.custom?'<span class="list-row-sub">(מותאם)</span>':''}</div>
+        ${a.custom ? `<button class="small-btn danger" data-delaction="${a.id}">מחק</button>` : `<span class="list-row-sub">קבוע</span>`}
+      </div>
+    `).join('')}
+    <button class="btn btn-primary btn-block" id="addActionFromDataBtn" style="margin-top:16px;">➕ הוסף סוג פעילות</button>
+  `;
+}
+
+function bindDataEvents(){
+  document.querySelectorAll('[data-datatab]').forEach(b=>{
+    b.onclick = ()=>{ dataTab = b.getAttribute('data-datatab'); render(); };
+  });
+
+  if(dataTab==='clients'){
+    const addClientBtn = document.getElementById('addClientBtn');
+    if(addClientBtn) addClientBtn.onclick = ()=>{
+      promptModal('הוספת לקוח חדש','שם הלקוח/חברה',(val)=>{
+        if(val) { getOrCreateClient(val); saveDB(); render(); }
+      });
+    };
+    document.querySelectorAll('[data-addsite]').forEach(btn=>{
+      btn.onclick = ()=>{
+        const client = findClient(btn.getAttribute('data-addsite'));
+        promptModal('הוספת אתר חדש','שם האתר',(val)=>{
+          if(val){ getOrCreateSite(client,val); saveDB(); render(); }
+        });
+      };
+    });
+    document.querySelectorAll('[data-addbuilding]').forEach(btn=>{
+      btn.onclick = ()=>{
+        const [cid,sid] = btn.getAttribute('data-addbuilding').split('|');
+        const site = findSite(cid,sid);
+        promptModal('הוספת בניין/מתחם','שם הבניין/מתחם',(val)=>{
+          if(val){ getOrCreateBuilding(site,val); saveDB(); render(); }
+        });
+      };
+    });
+    document.querySelectorAll('[data-delclient]').forEach(btn=>{
+      btn.onclick = ()=>{
+        confirmModal(`למחוק את הלקוח "${findClient(btn.getAttribute('data-delclient')).name}" וכל האתרים שלו? רישומי עבר יישארו בדוחות.`, ()=>{
+          DB.clients = DB.clients.filter(c=>c.id!==btn.getAttribute('data-delclient'));
+          saveDB(); render();
+        });
+      };
+    });
+    document.querySelectorAll('[data-delsite]').forEach(btn=>{
+      btn.onclick = ()=>{
+        const [cid,sid] = btn.getAttribute('data-delsite').split('|');
+        confirmModal('למחוק את האתר הזה?', ()=>{
+          const client = findClient(cid);
+          client.sites = client.sites.filter(s=>s.id!==sid);
+          saveDB(); render();
+        });
+      };
+    });
+  }
+
+  if(['managers','suppliers','workers'].includes(dataTab)){
+    const addBtn = document.getElementById('addSimpleBtn');
+    const singularMap = {managers:'מנהל',suppliers:'ספק/קבלן',workers:'עובד'};
+    const creatorMap = {managers:getOrCreateManager,suppliers:getOrCreateSupplier,workers:getOrCreateWorker};
+    if(addBtn) addBtn.onclick = ()=>{
+      promptModal(`הוספת ${singularMap[dataTab]}`,'שם',(val)=>{
+        if(val){ creatorMap[dataTab](val); saveDB(); render(); }
+      });
+    };
+    document.querySelectorAll('[data-delsimple]').forEach(btn=>{
+      btn.onclick = ()=>{
+        const [key,id] = btn.getAttribute('data-delsimple').split('|');
+        confirmModal('למחוק רשומה זו? רישומי עבר בדוחות יישארו ללא שינוי.', ()=>{
+          DB[key] = DB[key].filter(it=>it.id!==id);
+          saveDB(); render();
+        });
+      };
+    });
+  }
+
+  if(dataTab==='actions'){
+    const addBtn = document.getElementById('addActionFromDataBtn');
+    if(addBtn) addBtn.onclick = openAddCustomActionModal;
+    document.querySelectorAll('[data-delaction]').forEach(btn=>{
+      btn.onclick = ()=>{
+        const id = btn.getAttribute('data-delaction');
+        confirmModal('למחוק את סוג הפעילות הזה?', ()=>{
+          CUSTOM_ACTIONS = CUSTOM_ACTIONS.filter(a=>a.id!==id);
+          DB.customActions = CUSTOM_ACTIONS;
+          saveDB(); render();
+        });
+      };
+    });
+  }
+}
+
+/* ---------- modal helpers: prompt & confirm ---------- */
+function promptModal(title, placeholder, onSubmit){
+  openModal(`
+    <h3>${title}</h3>
+    <div class="field" style="margin-bottom:0;">
+      <input type="text" id="promptInput" placeholder="${placeholder}">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="promptCancel">ביטול</button>
+      <button class="btn btn-primary" id="promptOk">הוסף</button>
+    </div>
+  `);
+  const inp = document.getElementById('promptInput');
+  inp.focus();
+  function submit(){
+    const val = inp.value.trim();
+    closeModal();
+    onSubmit(val);
+  }
+  document.getElementById('promptOk').onclick = submit;
+  document.getElementById('promptCancel').onclick = closeModal;
+  inp.addEventListener('keydown', e=>{ if(e.key==='Enter') submit(); });
+}
+function confirmModal(message, onConfirm){
+  openModal(`
+    <h3>⚠️ אישור פעולה</h3>
+    <p style="color:var(--steel-200);font-size:14px;line-height:1.6;">${message}</p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="confirmCancel">ביטול</button>
+      <button class="btn btn-primary" id="confirmOk" style="background:var(--danger-red);box-shadow:0 3px 0 #a01818;">מחק</button>
+    </div>
+  `);
+  document.getElementById('confirmOk').onclick = ()=>{ closeModal(); onConfirm(); };
+  document.getElementById('confirmCancel').onclick = closeModal;
+}
+
+/* ====================== SETTINGS SCREEN ====================== */
+function renderSettingsScreen(){
+  const totalEntries = DB.entries.length;
+  const oldestDate = DB.entries.length ? DB.entries.reduce((min,e)=> e.date<min?e.date:min, DB.entries[0].date) : null;
+  const device = getDeviceInfo();
+  return `
+  <div class="tube-rule"></div>
+
+  <div class="card">
+    <div class="card-header"><h2>👤 שם מזהה למכשיר הזה</h2></div>
+    <div class="field">
+      <label>איך לקרוא למכשיר/למשתמש הזה?</label>
+      <input type="text" id="deviceNameInput" placeholder="לדוגמה: מחשב המשרד / הנייד של דני" value="${device.deviceName||''}">
+    </div>
+    <button class="btn btn-primary" id="saveDeviceNameBtn">שמירה</button>
+    <div class="hint" style="margin-top:10px;">השם הזה יתויג על כל רישום שתוסיפי ממכשיר זה, כדי שיהיה אפשר לדעת מי הזין מה בעת איחוד נתונים בין המשתמשים.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2>🔐 סיסמת כניסה</h2></div>
+    <div class="field">
+      <label>שינוי סיסמה</label>
+      <input type="password" id="newPassInput" placeholder="סיסמה חדשה">
+    </div>
+    <button class="btn btn-primary" id="savePassBtn">שמירת סיסמה</button>
+    <div class="hint" style="margin-top:10px;">הסיסמה משותפת לכל המשתמשים (עד 3 אנשים) שמתחברים לאתר הזה.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2>🔗 שיתוף נתונים עם המשתמשים האחרים</h2></div>
+    <p style="font-size:13px;color:var(--steel-200);line-height:1.7;margin-top:0;">
+      כל משתמש מזין נתונים על המכשיר שלו. כדי לאחד את כל הנתונים למקום אחד (אצלך), כל משתמש מייצא "קובץ שיתוף" קטן ושומר אותו בתיקיית OneDrive המשותפת — ואז את (או כל אחד) מאחדת את כל הקבצים במסך <b>"איחוד נתונים"</b>.
+    </p>
+    <button class="btn btn-primary btn-block" id="exportShareBtn" style="margin-bottom:10px;">📤 ייצוא קובץ שיתוף (לרישומים שלי)</button>
+    <button class="btn btn-ghost btn-block" id="goToMergeBtn">🔀 פתיחת מסך איחוד נתונים</button>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2>💾 גיבוי מלא (פרטי, למכשיר זה)</h2></div>
+    <p style="font-size:13px;color:var(--steel-200);line-height:1.7;margin-top:0;">
+      גיבוי מלא שומר גם הגדרות וסיסמה. מתאים לשמירה אישית או להעברה מלאה בין המכשיר שלך לחדש. אינו מתאים לאיחוד בין כמה משתמשים — לכך משמש קובץ השיתוף שלמעלה.
+    </p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <button class="btn btn-ghost" id="exportJsonBtn">📤 ייצוא גיבוי מלא</button>
+      <button class="btn btn-ghost" id="importJsonBtn">📥 שחזור גיבוי מלא</button>
+      <input type="file" id="importJsonFile" accept=".json" style="display:none;">
+    </div>
+    <div class="stat-row" style="margin-top:16px;">
+      <div class="stat-box"><div class="num">${totalEntries}</div><div class="lbl">רישומים שמורים</div></div>
+      <div class="stat-box"><div class="num" style="font-size:15px;">${oldestDate?formatDateHe(oldestDate):'—'}</div><div class="lbl">רישום ראשון</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2>🧹 ניקוי נתונים ישנים</h2></div>
+    <p style="font-size:13px;color:var(--steel-200);line-height:1.7;margin-top:0;">
+      לאחר שייצאת והעלית את הקובץ ל-OneDrive, אפשר למחוק רישומים ישנים מ-10 חודשים ויותר כדי לשמור על האפליקציה קלילה.
+    </p>
+    <button class="btn btn-ghost" id="cleanOldBtn" style="border-color:var(--danger-red);color:#ff8787;">מחק רישומים ישנים מ-10 חודשים</button>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2>ℹ️ אודות</h2></div>
+    <p style="font-size:13px;color:var(--steel-400);line-height:1.7;margin:0;">
+      לוח האתר — כלי פנימי לניהול פעילות יומית בעבודות פיגומים. כל הנתונים נשמרים באופן מקומי בדפדפן זה בלבד ואינם נשלחים לאף שרת חיצוני.
+    </p>
+  </div>
+  `;
+}
+
+function bindSettingsEvents(){
+  document.getElementById('saveDeviceNameBtn').onclick = ()=>{
+    const val = document.getElementById('deviceNameInput').value.trim();
+    if(!val){ showToast('נא להזין שם','⚠️'); return; }
+    setDeviceName(val);
+    showToast('השם נשמר');
+  };
+
+  document.getElementById('savePassBtn').onclick = ()=>{
+    const val = document.getElementById('newPassInput').value;
+    if(!val || val.length<2){ showToast('סיסמה קצרה מדי','⚠️'); return; }
+    DB.settings.password = val;
+    saveDB();
+    showToast('הסיסמה עודכנה');
+    document.getElementById('newPassInput').value='';
+  };
+
+  document.getElementById('exportShareBtn').onclick = exportShareFile;
+  document.getElementById('goToMergeBtn').onclick = ()=> navigate('merge');
+
+  document.getElementById('exportJsonBtn').onclick = ()=>{
+    const blob = new Blob([JSON.stringify(DB,null,2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `גיבוי_לוח_האתר_${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('גיבוי יוצא בהצלחה','📤');
+  };
+
+  document.getElementById('importJsonBtn').onclick = ()=> document.getElementById('importJsonFile').click();
+  document.getElementById('importJsonFile').onchange = (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev)=>{
+      try{
+        const parsed = JSON.parse(ev.target.result);
+        confirmModal('שחזור גיבוי מלא ידרוס את כל הנתונים הקיימים באפליקציה (כולל סיסמה). להמשיך?', ()=>{
+          DB = {...defaultDB(), ...parsed};
+          CUSTOM_ACTIONS = DB.customActions || [];
+          saveDB();
+          showToast('הגיבוי שוחזר בהצלחה');
+          render();
+        });
+      }catch(err){
+        showToast('קובץ לא תקין','⚠️');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  document.getElementById('cleanOldBtn').onclick = ()=>{
+    confirmModal('פעולה זו תמחק לצמיתות את כל הרישומים מ-10 חודשים ויותר. מומלץ לוודא שייצאת אקסל וגיבוי לפני כן. להמשיך?', ()=>{
+      const cutoff = new Date();
+      cutoff.setMonth(cutoff.getMonth()-10);
+      const cutoffStr = cutoff.toISOString().slice(0,10);
+      const before = DB.entries.length;
+      DB.entries = DB.entries.filter(e=> e.date >= cutoffStr);
+      saveDB();
+      showToast(`נמחקו ${before-DB.entries.length} רישומים ישנים`);
+      render();
+    });
+  };
+}
+
+/* ====================== SHARE EXPORT (for merging between users) ====================== */
+function exportShareFile(){
+  const device = getDeviceInfo();
+  const shareData = {
+    type: 'scaffold_board_share',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    deviceId: device.deviceId,
+    deviceName: device.deviceName || 'לא צוין',
+    clients: DB.clients,
+    suppliers: DB.suppliers,
+    managers: DB.managers,
+    workers: DB.workers,
+    entries: DB.entries,
+    customActions: DB.customActions
+  };
+  const blob = new Blob([JSON.stringify(shareData,null,2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const namePart = (device.deviceName||'מכשיר').replace(/[^א-תa-zA-Z0-9_-]+/g,'_');
+  a.href = url; a.download = `שיתוף_${namePart}_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('קובץ שיתוף יוצא — שמרי אותו בתיקיית OneDrive המשותפת','📤');
+}
+
+/* ====================== MERGE SCREEN ====================== */
+let mergeFiles = []; // [{fileName, data, parsed:boolean, error}]
+let mergePreview = null; // computed once files are loaded
+
+function renderMergeScreen(){
+  return `
+  <div class="tube-rule"></div>
+  <div class="card">
+    <div class="card-header">
+      <h2>🔀 איחוד נתונים בין משתמשים</h2>
+      <button class="small-btn" id="backToSettingsBtn">← חזרה להגדרות</button>
+    </div>
+    <p style="font-size:13px;color:var(--steel-200);line-height:1.7;margin-top:0;">
+      בחרי כאן את כל קבצי ה"שיתוף" שייצאו המשתמשים האחרים (מתיקיית OneDrive המשותפת, או מהמייל/וואטסאפ). אפשר לבחור כמה קבצים בבת אחת. המערכת תאחד אותם עם הנתונים הקיימים אצלך — ללא כפילויות.
+    </p>
+    <button class="btn btn-primary btn-block" id="pickMergeFilesBtn">📂 בחירת קבצי שיתוף לאיחוד</button>
+    <input type="file" id="mergeFilesInput" accept=".json" multiple style="display:none;">
+    ${mergeFiles.length>0 ? renderMergeFilesList() : ''}
+  </div>
+  ${mergePreview ? renderMergePreview() : ''}
+  `;
+}
+
+function renderMergeFilesList(){
+  return `
+  <div class="section-title"><span>קבצים שנבחרו (${mergeFiles.length})</span></div>
+  ${mergeFiles.map((f,idx)=>`
+    <div class="list-row">
+      <div>
+        <div class="list-row-main">${f.fileName}</div>
+        <div class="list-row-sub">${f.error? '⚠️ '+f.error : (f.data ? `מכשיר: ${f.data.deviceName||'לא צוין'} · ${f.data.entries?.length||0} רישומים` : 'טוען...')}</div>
+      </div>
+      <button class="small-btn danger" data-removemergefile="${idx}">✕</button>
+    </div>
+  `).join('')}
+  ${mergeFiles.some(f=>f.data) ? `<button class="btn btn-primary btn-block" id="runMergeBtn" style="margin-top:14px;">🔀 חשב איחוד</button>` : ''}
+  `;
+}
+
+function renderMergePreview(){
+  const p = mergePreview;
+  return `
+  <div class="card">
+    <div class="card-header"><h2>📋 תצוגה מקדימה של האיחוד</h2></div>
+    <div class="stat-row">
+      <div class="stat-box"><div class="num">${p.newEntries}</div><div class="lbl">רישומים חדשים שיתווספו</div></div>
+      <div class="stat-box"><div class="num">${p.dupEntries}</div><div class="lbl">רישומים כפולים (יידלגו)</div></div>
+      <div class="stat-box"><div class="num">${p.newClients}</div><div class="lbl">לקוחות/אתרים חדשים</div></div>
+      <div class="stat-box"><div class="num">${p.newPeople}</div><div class="lbl">מנהלים/עובדים/ספקים חדשים</div></div>
+    </div>
+    <div class="hint" style="margin-bottom:14px;">לחיצה על האישור תוסיף את כל הנתונים החדשים לרשימה הקיימת אצלך. הנתונים הקיימים לא יימחקו או יוחלפו.</div>
+    <button class="btn btn-primary btn-block" id="confirmMergeBtn">✓ אישור והוספת הנתונים</button>
+  </div>
+  `;
+}
+
+function bindMergeEvents(){
+  document.getElementById('backToSettingsBtn').onclick = ()=> navigate('settings');
+  document.getElementById('pickMergeFilesBtn').onclick = ()=> document.getElementById('mergeFilesInput').click();
+  document.getElementById('mergeFilesInput').onchange = (e)=>{
+    const files = Array.from(e.target.files);
+    files.forEach(file=>{
+      const entry = {fileName:file.name, data:null, error:null};
+      mergeFiles.push(entry);
+      const reader = new FileReader();
+      reader.onload = (ev)=>{
+        try{
+          const parsed = JSON.parse(ev.target.result);
+          if(!parsed.entries){ entry.error = 'קובץ זה אינו קובץ שיתוף תקין'; }
+          else { entry.data = parsed; }
+        }catch(err){
+          entry.error = 'לא ניתן לקרוא את הקובץ';
+        }
+        mergePreview = null;
+        render();
+      };
+      reader.readAsText(file);
+    });
+    render();
+  };
+  document.querySelectorAll('[data-removemergefile]').forEach(btn=>{
+    btn.onclick = ()=>{
+      mergeFiles.splice(parseInt(btn.getAttribute('data-removemergefile')),1);
+      mergePreview = null;
+      render();
+    };
+  });
+  const runBtn = document.getElementById('runMergeBtn');
+  if(runBtn) runBtn.onclick = ()=>{ mergePreview = computeMerge(); render(); };
+  const confirmBtn = document.getElementById('confirmMergeBtn');
+  if(confirmBtn) confirmBtn.onclick = applyMerge;
+}
+
+/* ---------- merge algorithm ----------
+   Strategy:
+   1. Build name-based lookup maps from CURRENT DB for clients/sites/buildings/managers/suppliers/workers.
+   2. For each incoming file, walk its clients->sites->buildings and managers/suppliers/workers,
+      matching by normalized name. If found, build an "idMap" from the incoming id -> existing id.
+      If not found, create a new entity (with a fresh local-safe id) and register it in the lookup + idMap.
+   3. For entries: dedupe by entry.id (already globally unique). For entries that pass, remap all
+      referenced ids (managerId, supplierId, clientId, siteId, buildingId inside actions, workerIds)
+      through the idMap built in step 2, so they point to the correct (possibly newly created) local entities.
+------------------------------------- */
+function norm(s){ return (s||'').trim().toLowerCase(); }
+
+function computeMerge(){
+  // Work on a deep clone of current DB so we can preview without mutating live state
+  const draft = JSON.parse(JSON.stringify(DB));
+
+  const clientByName = new Map(draft.clients.map(c=>[norm(c.name), c]));
+  const managerByName = new Map(draft.managers.map(m=>[norm(m.name), m]));
+  const supplierByName = new Map(draft.suppliers.map(s=>[norm(s.name), s]));
+  const workerByName = new Map(draft.workers.map(w=>[norm(w.name), w]));
+  const existingEntryIds = new Set(draft.entries.map(e=>e.id));
+  const existingActionLabels = new Set(getAllActions().map(a=>norm(a.label)));
+  const existingCustomActionIds = new Set((draft.customActions||[]).map(a=>a.id));
+
+  let newClients=0, newPeople=0, newEntries=0, dupEntries=0;
+  const newEntriesToAdd = [];
+  const newCustomActionsToAdd = [];
+
+  mergeFiles.filter(f=>f.data).forEach(f=>{
+    const incoming = f.data;
+    const idMap = {}; // incoming id -> local id (for clients, sites, buildings, managers, suppliers, workers)
+
+    // --- managers ---
+    (incoming.managers||[]).forEach(m=>{
+      const key = norm(m.name);
+      let local = managerByName.get(key);
+      if(!local){ local = {id:uid('mgr'), name:m.name}; draft.managers.push(local); managerByName.set(key,local); newPeople++; }
+      idMap[m.id] = local.id;
+    });
+    // --- suppliers ---
+    (incoming.suppliers||[]).forEach(s=>{
+      const key = norm(s.name);
+      let local = supplierByName.get(key);
+      if(!local){ local = {id:uid('sup'), name:s.name}; draft.suppliers.push(local); supplierByName.set(key,local); newPeople++; }
+      idMap[s.id] = local.id;
+    });
+    // --- workers ---
+    (incoming.workers||[]).forEach(w=>{
+      const key = norm(w.name);
+      let local = workerByName.get(key);
+      if(!local){ local = {id:uid('wrk'), name:w.name}; draft.workers.push(local); workerByName.set(key,local); newPeople++; }
+      idMap[w.id] = local.id;
+    });
+    // --- clients -> sites -> buildings ---
+    (incoming.clients||[]).forEach(c=>{
+      const cKey = norm(c.name);
+      let localClient = clientByName.get(cKey);
+      if(!localClient){
+        localClient = {id:uid('client'), name:c.name, sites:[]};
+        draft.clients.push(localClient);
+        clientByName.set(cKey, localClient);
+        newClients++;
+      }
+      idMap[c.id] = localClient.id;
+      const siteByName = new Map(localClient.sites.map(s=>[norm(s.name), s]));
+      (c.sites||[]).forEach(s=>{
+        const sKey = norm(s.name);
+        let localSite = siteByName.get(sKey);
+        if(!localSite){
+          localSite = {id:uid('site'), name:s.name, buildings:[]};
+          localClient.sites.push(localSite);
+          siteByName.set(sKey, localSite);
+          newClients++;
+        }
+        idMap[s.id] = localSite.id;
+        const buildingByName = new Map(localSite.buildings.map(b=>[norm(b.name), b]));
+        (s.buildings||[]).forEach(b=>{
+          const bKey = norm(b.name);
+          let localBuilding = buildingByName.get(bKey);
+          if(!localBuilding){
+            localBuilding = {id:uid('bld'), name:b.name};
+            localSite.buildings.push(localBuilding);
+            buildingByName.set(bKey, localBuilding);
+            newClients++;
+          }
+          idMap[b.id] = localBuilding.id;
+        });
+      });
+    });
+    // --- custom actions (merge by label, since action ids are stable strings like 'install' for built-ins) ---
+    (incoming.customActions||[]).forEach(a=>{
+      const key = norm(a.label);
+      if(!existingActionLabels.has(key) && !existingCustomActionIds.has(a.id)){
+        existingActionLabels.add(key);
+        existingCustomActionIds.add(a.id);
+        newCustomActionsToAdd.push(a);
+      }
+    });
+
+    // --- entries ---
+    (incoming.entries||[]).forEach(e=>{
+      if(existingEntryIds.has(e.id)){ dupEntries++; return; }
+      existingEntryIds.add(e.id);
+      // remap referenced ids
+      const remapped = JSON.parse(JSON.stringify(e));
+      if(remapped.managerId) remapped.managerId = idMap[remapped.managerId] || remapped.managerId;
+      if(remapped.supplierId) remapped.supplierId = idMap[remapped.supplierId] || remapped.supplierId;
+      if(remapped.clientId) remapped.clientId = idMap[remapped.clientId] || remapped.clientId;
+      if(remapped.siteId) remapped.siteId = idMap[remapped.siteId] || remapped.siteId;
+      if(remapped.workerIds) remapped.workerIds = remapped.workerIds.map(wid=> idMap[wid]||wid);
+      if(remapped.actions){
+        remapped.actions.forEach(a=>{
+          if(a.buildings){
+            a.buildings.forEach(b=>{
+              if(b.buildingId) b.buildingId = idMap[b.buildingId] || b.buildingId;
+            });
+          }
+        });
+      }
+      newEntriesToAdd.push(remapped);
+      newEntries++;
+    });
+  });
+
+  draft.entries = draft.entries.concat(newEntriesToAdd);
+  draft.customActions = (draft.customActions||[]).concat(newCustomActionsToAdd);
+
+  return { draft, newClients, newPeople, newEntries, dupEntries };
+}
+
+function applyMerge(){
+  if(!mergePreview) return;
+  DB = mergePreview.draft;
+  CUSTOM_ACTIONS = DB.customActions || [];
+  saveDB();
+  showToast(`האיחוד הושלם: ${mergePreview.newEntries} רישומים חדשים נוספו`,'✓');
+  mergeFiles = [];
+  mergePreview = null;
+  navigate('report');
+}
+
+
+
+/* ====================== INIT ====================== */
+window.addEventListener('error', function(e){
+  const app = document.getElementById('app');
+  if(app && !document.getElementById('fatalErrBox')){
+    const box = document.createElement('div');
+    box.id = 'fatalErrBox';
+    box.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#e03131;color:#fff;padding:14px 18px;font-family:monospace;font-size:12px;z-index:9999;white-space:pre-wrap;direction:ltr;text-align:left;';
+    box.textContent = 'שגיאה באפליקציה: ' + (e.message||'unknown') + ' (שורה ' + (e.lineno||'?') + ')';
+    document.body.prepend(box);
+  }
+});
+try{
+  render();
+}catch(e){
+  document.getElementById('app').innerHTML = '<div style="padding:30px;color:#fff;font-family:monospace;direction:ltr;text-align:left;white-space:pre-wrap;">Fatal error on load:\n'+(e.stack||e.message)+'</div>';
+}
+</script>
+</body>
+</html>
