@@ -320,6 +320,28 @@ tbody tr:hover{background:rgba(255,255,255,.03);}
   padding:10px;font-size:12.5px;color:var(--steel-200);max-width:220px;white-space:normal;
 }
 </style>
+<style>
+  .brand-mark {
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    background: var(--safety-orange);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .photo-icon {
+    background-image: url("zarefie7/scaffold-board/shahwan  logo.png"); /* change this */
+    background-size: cover;
+    background-position: center;
+
+    mask: url("zarefie7/scaffold-board/shahwan-logo.svg") center/contain no-repeat;
+    -webkit-mask: url("zarefie7/scaffold-board/shahwan-logo.svg") center/contain no-repeat;
+  }
+</style>
+
 </head>
 <body>
 <div id="app"></div>
@@ -334,7 +356,7 @@ tbody tr:hover{background:rgba(255,255,255,.03);}
 const STORAGE_KEY = 'scaffold_board_data_v1';
 const AUTH_KEY     = 'scaffold_board_auth_v1';
 const DEVICE_KEY    = 'scaffold_board_device_v1';
-const APP_PASSWORD_DEFAULT = '1234'; // ניתן לשינוי במסך ההגדרות
+const APP_PASSWORD_DEFAULT = '2026'; // ניתן לשינוי במסך ההגדרות
 
 /* ---------- device identity (used for merge/sync between people) ---------- */
 function getDeviceInfo(){
@@ -462,14 +484,13 @@ function renderLogin(){
   <div class="login-wrap">
     <div class="login-card">
       <div class="login-mark">${iconScaffold(36)}</div>
-      <h1>לוח האתר</h1>
+      <h1>שהואן עאמר לפיגומים בע"מ </h1>
       <p class="sub">ניהול פעילות יומית — עבודות פיגומים</p>
       <div class="field">
         <input type="password" id="loginPass" placeholder="הזן סיסמה" autocomplete="off" inputmode="text">
       </div>
       <button type="button" class="btn btn-primary btn-block" id="loginBtn">כניסה</button>
       <div class="login-error" id="loginError">סיסמה שגויה, נסי שוב</div>
-      <p style="font-size:11.5px;color:var(--steel-400);margin-top:16px;">סיסמת ברירת מחדל בכניסה ראשונה: 1234</p>
     </div>
   </div>`;
 }
@@ -517,9 +538,9 @@ function renderShell(){
   return `
   <div class="topbar">
     <div class="brand">
-      <div class="brand-mark">${iconScaffold(22)}</div>
+      <div class="brand-mark photo-icon"></div>
       <div class="brand-text">
-        <h1>לוח האתר</h1>
+        <h1>שהואן עאמר לפיגומים בע"מ /h1>
         <span>ניהול פעילות יומית</span>
       </div>
     </div>
