@@ -3,9 +3,35 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
-<title>לוח האתר — ניהול פעילות פיגומים</title>
+<title>שהואן עאמר לפיגומים בע"מ </title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
+  /* your existing styles stay here */
+
+  .brand-mark {
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    background: var(--safety-orange);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .photo-icon {
+    background-image: url("shahwan  logo.png"); /* change this */
+    background-size: cover;
+    background-position: center;
+
+    mask: url("shahwan-logo.svg") center/contain no-repeat;
+    -webkit-mask: url("shahwan-logo.svg") center/contain no-repeat;
+  }
+</style>
+
+<style>
+
+
 /* ===== Design tokens ===== */
 :root{
   --steel-900:#15171c;
@@ -319,24 +345,6 @@ tbody tr:hover{background:rgba(255,255,255,.03);}
   background:var(--steel-900);border:1px solid var(--steel-600);border-radius:var(--radius-s);
   padding:10px;font-size:12.5px;color:var(--steel-200);max-width:220px;white-space:normal;
 }
- .brand-mark {
-    width: 38px;
-    height: 38px;
-    border-radius: 8px;
-    background: var(--safety-orange);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-  }
-
-  .photo-icon {
-    background-image: url("shahwan  logo.png"); /* change this */
-    background-size: cover;
-    background-position: center;
-
-    mask: url("shahwan-logo.svg") center/contain no-repeat;
-    -webkit-mask: url("shahwan-logo.svg") center/contain no-repeat;
 </style>
 
 </head>
@@ -481,7 +489,7 @@ function renderLogin(){
   <div class="login-wrap">
     <div class="login-card">
       <div class="login-mark">${iconScaffold(36)}</div>
-      <h1>שהואן עאמר לפיגומים בע"מ </h1>
+      <h1>לוח האתר</h1>
       <p class="sub">ניהול פעילות יומית — עבודות פיגומים</p>
       <div class="field">
         <input type="password" id="loginPass" placeholder="הזן סיסמה" autocomplete="off" inputmode="text">
@@ -537,7 +545,7 @@ function renderShell(){
     <div class="brand">
       <div class="brand-mark photo-icon"></div>
       <div class="brand-text">
-        <h1>שהואן עאמר לפיגומים בע"מ /h1>
+        <h1>  שהואן עאמר לפיגומים בע"מ  </h1>
         <span>ניהול פעילות יומית</span>
       </div>
     </div>
