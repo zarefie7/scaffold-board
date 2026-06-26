@@ -476,6 +476,7 @@ function navigate(screen){
 
 function freshEntryForm(){
   return {
+    deditingId: null,
     date: new Date().toISOString().slice(0,10),
     managerId:null, managerName:'',
     supplierId:null, supplierName:'',
@@ -706,8 +707,9 @@ function renderEntryScreen(){
   </div>
 
   <button class="btn btn-primary btn-block" id="submitEntryBtn" style="padding:16px;font-size:16px;">
-    ✓ שמירת רישום היום
+    ${f.editingId ? '✓ שמירת שינויים ברישום' : '✓ שמירת רישום היום'}
   </button>
+  ${f.editingId ? `<button class="btn btn-ghost btn-block" id="cancelEditBtn" style="margin-top:10px;">✕ ביטול עריכה</button>` : ''}
   `;
 }
 
@@ -1035,7 +1037,13 @@ function bindEntryEvents(){
   document.getElementById('f_generalNotes').oninput = e=>{ f.generalNotes = e.target.value; };
 
   document.getElementById('submitEntryBtn').onclick = submitEntry;
+  const cancelEditBtn = document.getElementById('cancelEditBtn');
+  if(cancelEditBtn) cancelEditBtn.onclick = ()=>{
+    entryForm = freshEntryForm();
+    render();
+  };
 }
+
 
 function openAddCustomActionModal(){
   openModal(`
@@ -1091,13 +1099,16 @@ function submitEntry(){
     }
   }
 
+  const isEdit = !!f.editingId;
+  const existing = isEdit ? DB.entries.find(e=>e.id===f.editingId) : null;
   const device = getDeviceInfo();
   const entry = {
-    id: uid('entry'),
+    id: isEdit ? f.editingId : uid('entry'),
     date: f.date,
-    loggedAt: new Date().toISOString(),
-    enteredByDevice: device.deviceName || 'לא צוין',
-    deviceId: device.deviceId,
+    loggedAt: isEdit ? existing.loggedAt : new Date().toISOString(),
+    editedAt: isEdit ? new Date().toISOString() : undefined,
+    enteredByDevice: isEdit ? existing.enteredByDevice : (device.deviceName || 'לא צוין'),
+    deviceId: isEdit ? existing.deviceId : device.deviceId,
     managerId: f.managerId, managerName: f.managerName,
     supplierId: f.supplierId, supplierName: f.supplierName,
     clientId: f.clientId, clientName: f.clientName,
@@ -1119,15 +1130,63 @@ function submitEntry(){
     generalNotes: f.generalNotes
   };
 
-  DB.entries.push(entry);
+  if(isEdit){
+    const idx = DB.entries.findIndex(e=>e.id===f.editingId);
+    if(idx>-1) DB.entries[idx] = entry;
+    showToast('הרישום עודכן בהצלחה!');
+  } else {
+    DB.entries.push(entry);
+    showToast('הרישום נשמר בהצלחה!');
+  }
   saveDB();
-  showToast('הרישום נשמר בהצלחה!');
   entryForm = freshEntryForm();
-  render();
+  navigate('report');
+
 }
 
 /* ====================== REPORT SCREEN ====================== */
 let reportFilters = { client:'', site:'', manager:'', supplier:'', worker:'', month:'', actionType:'', device:'' };
+function editEntry(entryId){
+  const e = DB.entries.find(x=>x.id===entryId);
+  if(!e) return;
+
+  const form = freshEntryForm();
+  form.editingId = e.id;
+  form.date = e.date;
+  form.managerId = e.managerId; form.managerName = e.managerName;
+  form.supplierId = e.supplierId || null; form.supplierName = e.supplierName || '';
+  form.clientId = e.clientId; form.clientName = e.clientName;
+  form.siteId = e.siteId; form.siteName = e.siteName;
+  form.workerIds = e.workerIds.map((id,i)=>({id, name:e.workerNames[i]||''}));
+  form.generalNotes = e.generalNotes || '';
+
+  form.selectedActions = {};
+  e.actions.forEach(a=>{
+    form.selectedActions[a.actionId] = {
+      notes: a.notes || '',
+      buildings: (a.buildings && a.buildings.length>0)
+        ? a.buildings.map(b=>({
+            buildingId: b.buildingId, buildingName: b.buildingName,
+            bedsCount: b.bedsCount || '', scaffoldType: b.scaffoldType || 'רגיל'
+          }))
+        : [{buildingId:'',buildingName:'',bedsCount:'',scaffoldType:'רגיל',notes:''}]
+    };
+  });
+
+  entryForm = form;
+  navigate('entry');
+}
+
+function deleteEntry(entryId){
+  const e = DB.entries.find(x=>x.id===entryId);
+  if(!e) return;
+  confirmModal(`למחוק לצמיתות את הרישום של ${formatDateHe(e.date)} (${e.clientName} — ${e.siteName})?`, ()=>{
+    DB.entries = DB.entries.filter(x=>x.id!==entryId);
+    saveDB();
+    showToast('הרישום נמחק');
+    render();
+  });
+}
 
 function getFilteredEntries(){
   return DB.entries.filter(e=>{
@@ -1214,8 +1273,8 @@ function renderReportScreen(){
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th>תאריך</th><th>לקוח</th><th>אתר</th><th>מנהל</th><th>ספק</th>
-          <th>עובדים</th><th>פעולות</th><th>בניינים / מיטות</th><th>הערות</th><th>הוזן ע״י</th>
+          <th>עובדים</th><th>פעולות</th><th>בניינים / מיטות</th><th>הערות</th><th>הוזן ע״י</th><th>ניהול</th>
+         </tr></thead>
         </tr></thead>
         <tbody>
           ${entries.map(e=>renderEntryRow(e)).join('')}
@@ -1253,6 +1312,10 @@ function renderEntryRow(e){
     <td><div class="notes-box-display">${buildingsHtml}</div></td>
     <td><div class="notes-box-display">${notesAll}</div></td>
     <td>${e.enteredByDevice||'—'}</td>
+    <td style="display:flex;gap:6px;">
+      <button class="small-btn" data-editentry="${e.id}">✏️ ערוך</button>
+      <button class="small-btn danger" data-delentry="${e.id}">🗑️ מחק</button>
+    </td>
   </tr>`;
 }
 
@@ -1272,6 +1335,13 @@ function bindReportEvents(){
   document.getElementById('filt_device').onchange = e=>{ reportFilters.device=e.target.value; render(); };
   document.getElementById('clearFiltersBtn').onclick = ()=>{ reportFilters = {client:'',site:'',manager:'',supplier:'',worker:'',month:'',actionType:'',device:''}; render(); };
   document.getElementById('exportExcelBtn').onclick = exportToExcel;
+  document.querySelectorAll('[data-editentry]').forEach(btn=>{
+    btn.onclick = ()=> editEntry(btn.getAttribute('data-editentry'));
+  });
+  document.querySelectorAll('[data-delentry]').forEach(btn=>{
+    btn.onclick = ()=> deleteEntry(btn.getAttribute('data-delentry'));
+  });
+
 }
 
 /* ====================== EXCEL EXPORT ====================== */
