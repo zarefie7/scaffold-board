@@ -1221,6 +1221,12 @@ function renderReportScreen(){
       return s + a.buildings.reduce((bs,b)=> bs + (parseInt(b.bedsCount)||0), 0);
     },0);
   },0);
+  const totalBedsDismantled = entries.reduce((sum,e)=>{
+    return sum + e.actions.reduce((s,a)=>{
+      if(a.actionId!=='dismantle') return s;
+      return s + a.buildings.reduce((bs,b)=> bs + (parseInt(b.bedsCount)||0), 0);
+    },0);
+  },0);
   const uniqueSites = new Set(entries.map(e=>e.siteId)).size;
   const uniqueWorkers = new Set(entries.flatMap(e=>e.workerIds)).size;
 
@@ -1269,6 +1275,10 @@ function renderReportScreen(){
     <div class="stat-box"><div class="num">${uniqueSites}</div><div class="lbl">אתרים</div></div>
     <div class="stat-box"><div class="num">${uniqueWorkers}</div><div class="lbl">עובדים</div></div>
     <div class="stat-box"><div class="num">${totalBeds}</div><div class="lbl">מיטות שהותקנו</div></div>
+    <div class="stat-box"><div class="num">${totalBeds}</div><div class="lbl">מיטות שהותקנו</div></div>
+    <div class="stat-box"><div class="num">${totalBedsDismantled}</div><div class="lbl">מיטות שפורקו</div></div>
+  </div>
+    
   </div>
 
   <div class="card">
