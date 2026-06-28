@@ -281,6 +281,17 @@ th{
   position:sticky;top:0;white-space:nowrap;
 }
 td{padding:10px 12px;border-bottom:1px solid var(--steel-700);color:var(--steel-100);white-space:nowrap;}
+
+/* עמודת "ניהול" צמודה לשמאל הטבלה - תמיד גלויה בלי גלילה */
+th.col-actions, td.col-actions{
+  position:sticky;
+  left:0;
+  z-index:5;
+  background:var(--steel-800);
+  box-shadow:2px 0 6px rgba(0,0,0,.35);
+}
+th.col-actions{ background:var(--steel-700); z-index:10; }
+tbody tr:hover td.col-actions{ background:var(--steel-700); }
 tbody tr:hover{background:rgba(255,255,255,.03);}
 .badge{
   display:inline-block;padding:3px 9px;border-radius:99px;font-size:11px;font-weight:700;
@@ -1273,8 +1284,8 @@ function renderReportScreen(){
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th>עובדים</th><th>פעולות</th><th>בניינים / מיטות</th><th>הערות</th><th>הוזן ע״י</th><th>ניהול</th>
-         </tr></thead>
+         <th>עובדים</th><th>פעולות</th><th>בניינים / מיטות</th><th>הערות</th><th>הוזן ע״י</th><th class="col-actions">ניהול</th>
+        </tr></thead>
         </tr></thead>
         <tbody>
           ${entries.map(e=>renderEntryRow(e)).join('')}
@@ -1312,7 +1323,7 @@ function renderEntryRow(e){
     <td><div class="notes-box-display">${buildingsHtml}</div></td>
     <td><div class="notes-box-display">${notesAll}</div></td>
     <td>${e.enteredByDevice||'—'}</td>
-    <td style="display:flex;gap:6px;">
+    <td class="col-actions" style="display:flex;gap:6px;">
       <button class="small-btn" data-editentry="${e.id}">✏️ ערוך</button>
       <button class="small-btn danger" data-delentry="${e.id}">🗑️ מחק</button>
     </td>
