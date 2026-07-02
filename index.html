@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
 <title>שהואן עאמר לפיגומים בע"מ </title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <style>
   /* your existing styles stay here */
 
@@ -1401,17 +1401,80 @@ function exportToExcel(){
     'הוזן ע״י':e.enteredByDevice||''
   }));
 
-  const wb = XLSX.utils.book_new();
-  const ws1 = XLSX.utils.json_to_sheet(summaryRows);
-  const ws2 = XLSX.utils.json_to_sheet(detailRows);
-  autoFitColumns(ws1, summaryRows);
-  autoFitColumns(ws2, detailRows);
-  XLSX.utils.book_append_sheet(wb, ws1, 'סיכום יומי');
-  XLSX.utils.book_append_sheet(wb, ws2, 'פירוט לפי בניין');
+  buildStyledWorkbookAndDownload(
+    { 'סיכום יומי': summaryRows, 'פירוט לפי בניין': detailRows },
+    `דוח_פעילות_${reportFilters.month || 'הכל'}_${new Date().toISOString().slice(0,10)}.xlsx`
+  );
+}
 
-  const monthLabel = reportFilters.month || 'הכל';
-  const filename = `דוח_פעילות_${monthLabel}_${new Date().toISOString().slice(0,10)}.xlsx`;
-  XLSX.writeFile(wb, filename);
+/* ---- עיצוב קבוע לקובצי הייצוא (בהתאם לתבנית) ---- */
+const EXPORT_STYLE = {
+  fontName: 'David',
+  headerSize: 16,
+  dataSize: 14,
+  headerFillARGB: 'FFDCE6F1', // כחול-תכלת בהיר
+  rowHeight: 23.25,
+};
+const EXPORT_THIN_BORDER = {
+  top:    { style:'thin', color:{ argb:'FF000000' } },
+  left:   { style:'thin', color:{ argb:'FF000000' } },
+  bottom: { style:'thin', color:{ argb:'FF000000' } },
+  right:  { style:'thin', color:{ argb:'FF000000' } },
+};
+
+/* בונה גיליון אחד מעוצב מתוך מערך של אובייקטים (rows) */
+function addStyledSheet(workbook, sheetName, rows){
+  const ws = workbook.addWorksheet(sheetName);
+  if(!rows || rows.length===0){
+    ws.addRow(['אין נתונים']);
+    ws.views = [{ rightToLeft:true }];
+    return ws;
+  }
+
+  const headers = Object.keys(rows[0]);
+  ws.columns = headers.map(h => ({ header:h, key:h }));
+
+  const headerRow = ws.getRow(1);
+  headerRow.height = EXPORT_STYLE.rowHeight;
+  headerRow.eachCell(cell=>{
+    cell.font = { name:EXPORT_STYLE.fontName, size:EXPORT_STYLE.headerSize, bold:true };
+    cell.fill = { type:'pattern', pattern:'solid', fgColor:{ argb:EXPORT_STYLE.headerFillARGB } };
+    cell.alignment = { horizontal:'center', vertical:'middle', wrapText:true };
+    cell.border = EXPORT_THIN_BORDER;
+  });
+
+  rows.forEach(r=>{
+    const row = ws.addRow(r);
+    row.height = EXPORT_STYLE.rowHeight;
+    row.eachCell({ includeEmpty:true }, cell=>{
+      cell.font = { name:EXPORT_STYLE.fontName, size:EXPORT_STYLE.dataSize };
+      cell.alignment = { horizontal:'center', vertical:'middle', wrapText:true };
+      cell.border = EXPORT_THIN_BORDER;
+    });
+  });
+
+  headers.forEach((h, idx)=>{
+    const maxLen = Math.max(h.length, ...rows.map(r=> (r[h]!==undefined && r[h]!==null) ? String(r[h]).length : 0));
+    ws.getColumn(idx+1).width = Math.min(Math.max(maxLen+3, 10), 40);
+  });
+
+  ws.views = [{ rightToLeft:true, state:'frozen', ySplit:1 }];
+  return ws;
+}
+
+/* מקבל dict {שם_גיליון: rows} ומוריד קובץ אקסל מעוצב */
+async function buildStyledWorkbookAndDownload(sheetsDict, filename){
+  const workbook = new ExcelJS.Workbook();
+  Object.keys(sheetsDict).forEach(sheetName=>{
+    addStyledSheet(workbook, sheetName, sheetsDict[sheetName]);
+  });
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type:'application/octet-stream' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
   showToast('קובץ אקסל יוצא בהצלחה!','📥');
 }
 
@@ -1433,15 +1496,6 @@ function baseRow(e,a,b){
     'הוזן ע״י':e.enteredByDevice||''
   };
 }
-function autoFitColumns(ws, rows){
-  if(rows.length===0) return;
-  const keys = Object.keys(rows[0]);
-  ws['!cols'] = keys.map(k=>{
-    const maxLen = Math.max(k.length, ...rows.map(r=> (r[k]!==undefined? String(r[k]).length : 0)));
-    return { wch: Math.min(Math.max(maxLen+2, 10), 40) };
-  });
-}
-
 /* ====================== DATA MANAGEMENT SCREEN ====================== */
 let dataTab = 'clients'; // clients | managers | suppliers | workers | actions
 
